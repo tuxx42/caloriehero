@@ -1,0 +1,39 @@
+{
+  "name": "@caloriehero/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@caloriehero/meal-plan-engine": "workspace:*",
+    "@caloriehero/poster-client": "workspace:*",
+    "@caloriehero/shared-types": "workspace:*",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@types/ioredis": "^5.0.0",
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "^0.39.0",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.0",
+    "ioredis": "^5.9.3",
+    "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.5",
+    "stripe": "^20.3.1",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.30.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
