@@ -1,9 +1,28 @@
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
 dist/
-.turbo/
-.next/
-.expo/
-.env
-*.tsbuildinfo
+build/
+*.egg
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
 coverage/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Claude
 .claude/
