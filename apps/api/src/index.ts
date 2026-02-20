@@ -1,6 +1,12 @@
-import "dotenv/config";
-import { config } from "./config/env.js";
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "node:path";
+import { parseEnv } from "./config/env.js";
 import { buildApp } from "./app.js";
+
+// Load .env from monorepo root
+dotenvConfig({ path: resolve(import.meta.dirname, "../../../.env") });
+
+const config = parseEnv();
 
 const app = buildApp({
   useMockAuth: false,

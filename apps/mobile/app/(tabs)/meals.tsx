@@ -24,10 +24,7 @@ const CATEGORIES: { key: CategoryFilter; label: string }[] = [
 ];
 
 interface MealListResponse {
-  items: Meal[];
-  total: number;
-  page: number;
-  pageSize: number;
+  meals: Meal[];
 }
 
 export default function MealsScreen() {
@@ -45,7 +42,7 @@ export default function MealsScreen() {
       const data = await apiClient.get<MealListResponse>(
         `/api/v1/meals${params}`
       );
-      setMeals(data.items);
+      setMeals(data.meals);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load meals";
       setError(message);

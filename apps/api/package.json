@@ -9,7 +9,11 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "tsx src/db/push.ts",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@caloriehero/meal-plan-engine": "workspace:*",

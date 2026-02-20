@@ -4,7 +4,13 @@
     "slug": "caloriehero",
     "version": "1.0.0",
     "scheme": "caloriehero",
-    "platforms": ["ios", "android"],
-    "newArchEnabled": true
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

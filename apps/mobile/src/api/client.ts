@@ -1,6 +1,8 @@
 import { useAuthStore } from "@/stores/auth";
 
-const API_BASE_URL = "http://localhost:4000";
+// Use your machine's LAN IP so the phone can reach the API
+// Update this to match your network (check `ifconfig` or API startup logs)
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.10.8:3001";
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
