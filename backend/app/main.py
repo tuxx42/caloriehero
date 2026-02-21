@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
 from app.redis import close_redis, get_redis
+from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
+from app.routes.meals import router as meals_router
+from app.routes.users import router as users_router
 
 
 @asynccontextmanager
@@ -31,6 +34,9 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(auth_router)
+    app.include_router(meals_router)
+    app.include_router(users_router)
 
     return app
 
