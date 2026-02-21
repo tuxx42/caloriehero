@@ -16,7 +16,7 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 test_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def setup_database() -> AsyncGenerator[None]:
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -26,7 +26,7 @@ async def setup_database() -> AsyncGenerator[None]:
 
 
 @pytest.fixture
-async def db_session() -> AsyncGenerator[AsyncSession]:
+async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession]:
     async with test_session_factory() as session:
         yield session
 
