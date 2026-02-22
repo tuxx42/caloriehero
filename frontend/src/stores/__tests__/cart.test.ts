@@ -19,13 +19,23 @@ const mockMeal: Meal = {
   dietary_tags: [],
   image_url: null,
   active: true,
+  protein_price_per_gram: null,
+  carbs_price_per_gram: null,
+  fat_price_per_gram: null,
 };
 
 const mockMeal2: Meal = { ...mockMeal, id: "m2", name: "Meal 2", price: 200 };
 
 describe("useCartStore", () => {
   beforeEach(() => {
-    useCartStore.setState({ items: [] });
+    useCartStore.setState({
+      items: [],
+      pricingRates: {
+        protein_price_per_gram: 3,
+        carbs_price_per_gram: 1,
+        fat_price_per_gram: 1.5,
+      },
+    });
   });
 
   it("starts empty", () => {
@@ -34,20 +44,43 @@ describe("useCartStore", () => {
     expect(useCartStore.getState().itemCount()).toBe(0);
   });
 
-  it("adds an item", () => {
+  it("adds an item with default extras", () => {
     useCartStore.getState().addItem(mockMeal);
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(1);
     expect(state.items[0].meal.id).toBe("m1");
     expect(state.items[0].quantity).toBe(1);
+    expect(state.items[0].extraProtein).toBe(0);
+    expect(state.items[0].extraCarbs).toBe(0);
+    expect(state.items[0].extraFat).toBe(0);
   });
 
-  it("increments quantity on duplicate add", () => {
+  it("adds an item with extras", () => {
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 5, extraFat: 0 });
+    const state = useCartStore.getState();
+    expect(state.items).toHaveLength(1);
+    expect(state.items[0].extraProtein).toBe(10);
+    expect(state.items[0].extraCarbs).toBe(5);
+    expect(state.items[0].extraFat).toBe(0);
+  });
+
+  it("increments quantity on duplicate add with same extras", () => {
     useCartStore.getState().addItem(mockMeal);
     useCartStore.getState().addItem(mockMeal);
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(1);
     expect(state.items[0].quantity).toBe(2);
+  });
+
+  it("creates separate items for same meal with different extras", () => {
+    useCartStore.getState().addItem(mockMeal);
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 });
+    const state = useCartStore.getState();
+    expect(state.items).toHaveLength(2);
   });
 
   it("removes an item", () => {
@@ -68,12 +101,29 @@ describe("useCartStore", () => {
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
-  it("calculates total correctly", () => {
+  it("calculates total correctly without extras", () => {
     useCartStore.getState().addItem(mockMeal);
     useCartStore.getState().addItem(mockMeal2);
     useCartStore.getState().updateQuantity("m1", 2);
     // 159*2 + 200*1 = 518
     expect(useCartStore.getState().total()).toBe(518);
+  });
+
+  it("calculates total correctly with extras", () => {
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 });
+    // unit_price = 159 + 10*3 = 189, quantity=1
+    expect(useCartStore.getState().total()).toBe(189);
+  });
+
+  it("calculates item price correctly", () => {
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 20, extraFat: 5 });
+    const item = useCartStore.getState().items[0];
+    // 159 + (10*3) + (20*1) + (5*1.5) = 159 + 30 + 20 + 7.5 = 216.5
+    expect(useCartStore.getState().itemPrice(item)).toBe(216.5);
   });
 
   it("calculates item count correctly", () => {
@@ -89,5 +139,36 @@ describe("useCartStore", () => {
     useCartStore.getState().addItem(mockMeal2);
     useCartStore.getState().clearCart();
     expect(useCartStore.getState().items).toHaveLength(0);
+  });
+
+  it("sets pricing rates", () => {
+    useCartStore.getState().setPricingRates({
+      protein_price_per_gram: 5,
+      carbs_price_per_gram: 2,
+      fat_price_per_gram: 3,
+    });
+    expect(useCartStore.getState().pricingRates).toEqual({
+      protein_price_per_gram: 5,
+      carbs_price_per_gram: 2,
+      fat_price_per_gram: 3,
+    });
+  });
+
+  it("calculates unit price with negative extras (no reduction)", () => {
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: -10, extraCarbs: -20, extraFat: -5 });
+    const item = useCartStore.getState().items[0];
+    // Negative extras don't reduce price: 159 + 0 + 0 + 0 = 159
+    expect(useCartStore.getState().itemPrice(item)).toBe(159);
+  });
+
+  it("calculates unit price with mixed positive and negative extras", () => {
+    useCartStore
+      .getState()
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: -15, extraFat: 5 });
+    const item = useCartStore.getState().items[0];
+    // 159 + max(0,10)*3 + max(0,-15)*1 + max(0,5)*1.5 = 159 + 30 + 0 + 7.5 = 196.5
+    expect(useCartStore.getState().itemPrice(item)).toBe(196.5);
   });
 });

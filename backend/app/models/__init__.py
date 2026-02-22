@@ -4,6 +4,7 @@ from app.models.meal import Meal
 from app.models.meal_plan import MealPlan, MealPlanItem
 from app.models.order import Order, OrderItem
 from app.models.payment import PaymentIntent
+from app.models.settings import AppSettings
 from app.models.subscription import Subscription
 from app.models.user import User, UserProfile
 
@@ -20,4 +21,5 @@ __all__ = [
     "MealPlan",
     "MealPlanItem",
     "PaymentIntent",
+    "AppSettings",
 ]

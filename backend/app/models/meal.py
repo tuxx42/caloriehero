@@ -24,3 +24,6 @@ class Meal(Base, UUIDMixin, TimestampMixin):
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     poster_product_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    protein_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)
+    carbs_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fat_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)

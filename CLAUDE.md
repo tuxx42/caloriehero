@@ -37,10 +37,12 @@ make dev-frontend                    # Frontend dev
 - API routes: `/api/v1/*`. Health: `/health`.
 - External services (Stripe, Poster): Protocol + real + mock impl. Tests use mocks.
 - Pydantic Settings for env validation in `backend/app/config.py`.
-- SQLAlchemy ORM. Migrations via Alembic.
-- Auth: Google OAuth only. API verifies Google ID tokens, issues JWTs. Tests override dependencies.
+- SQLAlchemy ORM. Migrations via Alembic. Always create an Alembic migration at the end of every database model change.
+- Auth: Google OAuth only. API verifies Google ID tokens, issues JWTs. Test tokens: `test:<google_id>:<email>:<name>`.
 - SSE for realtime (not WebSocket). Redis pub/sub for broadcast.
 - Poster is polled for status (no webhooks). Stripe uses webhooks.
+- Rate limiting: 100 req/min per IP. Health endpoint exempt.
+- Docker: `docker compose up -d` for full stack, `docker compose up -d postgres redis` for dev deps.
 
 ## Order Flow
 

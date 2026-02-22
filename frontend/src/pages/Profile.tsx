@@ -1,31 +1,17 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { getMe, updateProfile } from "../api/endpoints/users";
 import type { UserWithProfile } from "../api/types";
 import { useAuthStore } from "../stores/auth";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
-
-const FITNESS_GOALS = [
-  { value: "maintenance", label: "Maintenance" },
-  { value: "cutting", label: "Cutting" },
-  { value: "bulking", label: "Bulking" },
-  { value: "keto", label: "Keto" },
-];
-
-const ALLERGEN_OPTIONS = [
-  "dairy", "eggs", "fish", "shellfish", "tree_nuts",
-  "peanuts", "wheat", "soy", "sesame", "gluten",
-];
-
-const DIETARY_OPTIONS = [
-  "vegetarian", "vegan", "keto", "high_protein",
-  "low_carb", "gluten_free", "dairy_free",
-];
+import { FITNESS_GOALS, ALLERGEN_OPTIONS, DIETARY_OPTIONS } from "../utils/constants";
 
 export function ProfilePage() {
   const [userData, setUserData] = useState<UserWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
 
   // Form state
   const [calories, setCalories] = useState(2000);
@@ -99,7 +85,15 @@ export function ProfilePage() {
 
       {/* Macro targets */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">
-        <h3 className="font-semibold text-gray-900">Macro Targets</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="font-semibold text-gray-900">Macro Targets</h3>
+          <button
+            onClick={() => navigate("/onboarding")}
+            className="text-sm text-emerald-600 font-medium hover:text-emerald-700"
+          >
+            Recalculate
+          </button>
+        </div>
         {[
           { label: "Calories", value: calories, setter: setCalories, unit: "kcal" },
           { label: "Protein", value: protein, setter: setProtein, unit: "g" },

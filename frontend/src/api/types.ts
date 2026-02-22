@@ -45,6 +45,9 @@ export interface Meal {
   dietary_tags: string[];
   image_url: string | null;
   active: boolean;
+  protein_price_per_gram: number | null;
+  carbs_price_per_gram: number | null;
+  fat_price_per_gram: number | null;
 }
 
 export interface OrderItem {
@@ -53,6 +56,16 @@ export interface OrderItem {
   meal_name: string;
   quantity: number;
   unit_price: number;
+  extra_protein: number;
+  extra_carbs: number;
+  extra_fat: number;
+}
+
+export interface PricingConfig {
+  id: string;
+  protein_price_per_gram: number;
+  carbs_price_per_gram: number;
+  fat_price_per_gram: number;
 }
 
 export interface Order {
@@ -81,6 +94,11 @@ export interface PlanItem {
   meal_name: string;
   score: number;
   slot_targets: MacroTargets;
+  extra_protein: number;
+  extra_carbs: number;
+  extra_fat: number;
+  extra_price: number;
+  meal: Meal;
 }
 
 export interface DailyPlan {
@@ -89,6 +107,7 @@ export interface DailyPlan {
   total_score: number;
   actual_macros: MacroTargets;
   target_macros: MacroTargets;
+  total_extra_price: number;
   items: PlanItem[];
 }
 
@@ -127,6 +146,14 @@ export interface TokenResponse {
   access_token: string;
   token_type: string;
   user: User;
+}
+
+export interface SlotAlternative {
+  meal_id: string;
+  meal_name: string;
+  score: number;
+  category: string;
+  meal: Meal;
 }
 
 export interface PaymentIntentResponse {

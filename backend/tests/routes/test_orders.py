@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.meal import Meal
+from app.models.settings import AppSettings
 from tests.conftest import create_test_user, make_auth_header
 
 
@@ -283,3 +284,163 @@ class TestPayOrder:
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+class TestOrderWithMacroExtras:
+    async def _seed_settings(self, db: AsyncSession) -> AppSettings:
+        s = AppSettings(
+            protein_price_per_gram=3.0,
+            carbs_price_per_gram=1.0,
+            fat_price_per_gram=1.5,
+        )
+        db.add(s)
+        await db.commit()
+        await db.refresh(s)
+        return s
+
+    async def test_order_with_extra_protein(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        await self._seed_settings(db_session)
+        meal = await _seed_meal(db_session, price=200.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{
+                    "meal_id": str(meal.id),
+                    "quantity": 1,
+                    "extra_protein": 10,
+                    "extra_carbs": 0,
+                    "extra_fat": 0,
+                }],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        # 200 + 10 * 3.0 = 230
+        assert data["total"] == 230.0
+        assert data["items"][0]["extra_protein"] == 10
+        assert data["items"][0]["extra_carbs"] == 0
+        assert data["items"][0]["extra_fat"] == 0
+
+    async def test_order_with_all_extras(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        await self._seed_settings(db_session)
+        meal = await _seed_meal(db_session, price=200.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{
+                    "meal_id": str(meal.id),
+                    "quantity": 2,
+                    "extra_protein": 10,
+                    "extra_carbs": 20,
+                    "extra_fat": 5,
+                }],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        # unit_price = 200 + (10*3) + (20*1) + (5*1.5) = 257.5
+        # total = 257.5 * 2 = 515.0
+        assert data["total"] == 515.0
+        assert data["items"][0]["unit_price"] == 257.5
+
+    async def test_order_defaults_extras_to_zero(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        meal = await _seed_meal(db_session, price=159.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{"meal_id": str(meal.id), "quantity": 1}],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["items"][0]["extra_protein"] == 0
+        assert data["items"][0]["extra_carbs"] == 0
+        assert data["items"][0]["extra_fat"] == 0
+        assert data["total"] == 159.0
+
+    async def test_order_with_negative_extras_no_price_reduction(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Negative extras don't reduce the price."""
+        user = await create_test_user(db_session)
+        await self._seed_settings(db_session)
+        meal = await _seed_meal(db_session, price=200.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{
+                    "meal_id": str(meal.id),
+                    "quantity": 1,
+                    "extra_protein": -10,
+                    "extra_carbs": -20,
+                    "extra_fat": -5,
+                }],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        # Price should stay at base (negative extras are free)
+        assert data["total"] == 200.0
+        assert data["items"][0]["extra_protein"] == -10
+        assert data["items"][0]["extra_carbs"] == -20
+        assert data["items"][0]["extra_fat"] == -5
+
+    async def test_order_rejects_excessive_negative_protein(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Can't remove more protein than the meal contains."""
+        user = await create_test_user(db_session)
+        await self._seed_settings(db_session)
+        # Meal has 40g protein
+        meal = await _seed_meal(db_session, price=200.0, protein=40.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{
+                    "meal_id": str(meal.id),
+                    "quantity": 1,
+                    "extra_protein": -50,
+                }],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 400
+
+    async def test_order_with_mixed_extras(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Mixed positive and negative extras: only positive adds cost."""
+        user = await create_test_user(db_session)
+        await self._seed_settings(db_session)
+        meal = await _seed_meal(db_session, price=200.0)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={
+                "items": [{
+                    "meal_id": str(meal.id),
+                    "quantity": 1,
+                    "extra_protein": 10,
+                    "extra_carbs": -15,
+                    "extra_fat": 0,
+                }],
+            },
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        # 200 + max(0,10)*3 + max(0,-15)*1 + max(0,0)*1.5 = 200 + 30 = 230
+        assert data["total"] == 230.0

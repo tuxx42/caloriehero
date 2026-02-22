@@ -38,5 +38,8 @@ class OrderItem(Base, UUIDMixin):
     meal_name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[float] = mapped_column(Float, nullable=False)
+    extra_protein: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    extra_carbs: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    extra_fat: Mapped[float] = mapped_column(Float, nullable=False, default=0)
 
     order: Mapped["Order"] = relationship(back_populates="items")

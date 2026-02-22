@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 class OrderItemCreate(BaseModel):
     meal_id: uuid.UUID
     quantity: int = Field(gt=0)
+    extra_protein: float = Field(default=0)
+    extra_carbs: float = Field(default=0)
+    extra_fat: float = Field(default=0)
 
 
 class OrderCreate(BaseModel):
@@ -23,6 +26,9 @@ class OrderItemResponse(BaseModel):
     meal_name: str
     quantity: int
     unit_price: float
+    extra_protein: float
+    extra_carbs: float
+    extra_fat: float
 
     model_config = {"from_attributes": True}
 

@@ -39,5 +39,8 @@ class MealPlanItem(Base, UUIDMixin):
     )
     score: Mapped[float] = mapped_column(Float, nullable=False)
     slot_targets: Mapped[dict] = mapped_column(JSON, nullable=False)
+    extra_protein: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    extra_carbs: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    extra_fat: Mapped[float] = mapped_column(Float, nullable=False, default=0)
 
     plan: Mapped["MealPlan"] = relationship(back_populates="items")

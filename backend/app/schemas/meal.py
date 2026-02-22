@@ -21,6 +21,9 @@ class MealBase(BaseModel):
     dietary_tags: list[str] = Field(default_factory=list)
     image_url: str | None = None
     poster_product_id: str | None = None
+    protein_price_per_gram: float | None = None
+    carbs_price_per_gram: float | None = None
+    fat_price_per_gram: float | None = None
 
 
 class MealCreate(MealBase):
@@ -46,6 +49,9 @@ class MealUpdate(BaseModel):
     image_url: str | None = None
     active: bool | None = None
     poster_product_id: str | None = None
+    protein_price_per_gram: float | None = None
+    carbs_price_per_gram: float | None = None
+    fat_price_per_gram: float | None = None
 
 
 class MealResponse(MealBase):

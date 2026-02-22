@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.models import Base, DeliverySlot, DeliveryZone, Meal
+from app.models import Base, AppSettings, DeliverySlot, DeliveryZone, Meal
 
 SEED_MEALS = [
     {
@@ -183,6 +183,16 @@ async def seed() -> None:
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with session_factory() as session:
+        # Seed app settings (global macro pricing)
+        print("Inserting default app settings...")
+        session.add(AppSettings(
+            protein_price_per_gram=3.0,
+            carbs_price_per_gram=1.0,
+            fat_price_per_gram=1.5,
+        ))
+        await session.flush()
+        print("App settings inserted.")
+
         # Seed meals
         print(f"Inserting {len(SEED_MEALS)} meals...")
         for meal_data in SEED_MEALS:

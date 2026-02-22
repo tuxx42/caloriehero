@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { listMeals } from "../api/endpoints/meals";
-import type { Meal } from "../api/types";
+import { getPricing } from "../api/endpoints/settings";
+import type { Meal, PricingConfig } from "../api/types";
 import { MealCard } from "../components/common/MealCard";
+import { MealCustomizer } from "../components/meals/MealCustomizer";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { useCartStore } from "../stores/cart";
 
@@ -17,7 +19,19 @@ export function MealsPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("");
+  const [pricing, setPricing] = useState<PricingConfig | null>(null);
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const addItem = useCartStore((s) => s.addItem);
+  const setPricingRates = useCartStore((s) => s.setPricingRates);
+
+  useEffect(() => {
+    getPricing()
+      .then((p) => {
+        setPricing(p);
+        setPricingRates(p);
+      })
+      .catch(console.error);
+  }, [setPricingRates]);
 
   useEffect(() => {
     setLoading(true);
@@ -59,11 +73,21 @@ export function MealsPage() {
             <MealCard
               key={meal.id}
               meal={meal}
-              onAddToCart={addItem}
-              onSelect={() => {}}
+              onAddToCart={() => setSelectedMeal(meal)}
+              onSelect={() => setSelectedMeal(meal)}
             />
           ))}
         </div>
+      )}
+
+      {/* Customizer modal */}
+      {selectedMeal && (
+        <MealCustomizer
+          meal={selectedMeal}
+          pricing={pricing}
+          onAdd={addItem}
+          onClose={() => setSelectedMeal(null)}
+        />
       )}
     </div>
   );

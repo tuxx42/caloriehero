@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://caloriehero:caloriehero@localhost:5432/caloriehero"
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = ""
 
     google_client_id: str = ""
     google_client_secret: str = ""

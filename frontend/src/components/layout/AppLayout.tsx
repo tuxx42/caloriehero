@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from "react-router";
 import { useAuthStore } from "../../stores/auth";
 import { useCartStore } from "../../stores/cart";
+import { useOnboardingCheck } from "../../hooks/useOnboardingCheck";
+import { LoadingSpinner } from "../common/LoadingSpinner";
 
 const NAV_ITEMS = [
   { path: "/", label: "Home", icon: "🏠" },
@@ -14,6 +16,15 @@ export function AppLayout() {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const itemCount = useCartStore((s) => s.itemCount());
+  const { ready } = useOnboardingCheck();
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">

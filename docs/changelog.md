@@ -1,90 +1,186 @@
 # CalorieHero - Changelog
 
-## 2026-02-20
+## 2026-02-22 — Complete Rewrite: Python + React
 
-### Phase 7: Mobile App (Complete)
-- Zustand stores: auth (persisted via AsyncStorage), cart (addItem/removeItem/updateQuantity)
-- API client (`src/api/client.ts`) with auto Bearer token from auth store
-- 13 screens via Expo Router file-based routing
-- Auth flow: mock Google sign-in, auth guard redirect
-- 4-tab bottom navigation: Home, Meals, Plan, Profile
-- Meals browser with FlatList and category filter tabs (All/Breakfast/Lunch/Dinner/Snack)
-- Meal plan generator calling POST /api/v1/matching/plan
-- Profile screen: macro targets, fitness goal, allergies, dietary preferences
-- Meal detail modal with macro breakdown, allergen badges, add-to-cart
-- Cart with +/- quantity controls and checkout flow
-- Order tracking with progress steps and 15s polling
-- Shared components: MacroBar, MealCard, StatusBadge
-- Dependencies added: zustand, @react-native-async-storage/async-storage, expo-web-browser, expo-auth-session, expo-crypto
+### Overview
+Full rewrite from Node.js/TypeScript Turborepo monorepo to:
+- **Backend**: Python (FastAPI + SQLAlchemy + Alembic + PostgreSQL + Redis)
+- **Frontend**: React 19 SPA (Vite + Tailwind v4 + React Router v7 + Zustand)
 
-### Phase 6: Admin Dashboard — Full (Complete)
-- API client (`lib/api.ts`) wrapping all Fastify endpoints with token management
-- React hooks (`hooks/use-api.ts`) with automatic fallback to mock data on API error
-- Dashboard page wired to real orders API
-- Meals page: full CRUD via API with error handling and refresh
-- Orders page: table with status badges, SSE live connection indicator
-- Customers page: table joined with subscription status
-- Subscriptions page: table with schedule details and macro targets
-- Delivery page: zone cards grid + slots table with capacity progress bars
-- Analytics page: stat cards + CSS bar charts for category distribution and order status
-- Graceful degradation: amber "API unavailable" banner, falls through to typed mock data
+### Railway Deployment Setup
+- **Single-service deploy**: FastAPI serves API + static frontend from one container
+- **Multi-stage Dockerfile** (repo root): Node builds frontend → Python serves everything
+- **railway.toml**: Configures build, start command (migrations + uvicorn), health check
+- **Redis made optional**: `redis_url` defaults to empty string; `get_redis()` returns `None` when disabled
+- **Alembic env.py**: Reads `DATABASE_URL` from environment (overrides hardcoded `alembic.ini`)
+- **Static serving in main.py**:
+  - `GET /config.js` — runtime config injection (replaces Docker entrypoint script)
+  - `/assets` — StaticFiles mount for Vite build output
+  - `/{path:path}` — catch-all SPA fallback to `index.html`
+- Existing Docker Compose workflow unchanged
 
-### Phase 4: API Integrations (Complete)
-- Added DB schemas: delivery_zones, delivery_slots, subscriptions, meal_plans, meal_plan_items, payment_intents
-- Added Redis plugin (ioredis) with pub/sub support (3 connections: general, pub, sub)
-- Updated env.ts with Stripe, Poster POS config validation
-- Updated app.ts to support Redis injection and Stripe config decoration
-- Added Stripe and ioredis dependencies to API
-- Built Poster POS client package: HTTP client with retries, incoming orders, products, status polling (23 tests)
-- Built API services: plan-service, order-service, payment-service, poster-service, subscription-service, delivery-service
-- Built API routes: matching, orders, subscriptions, delivery, webhooks/stripe
-- Payment provider interface pattern (real Stripe + mock for tests)
-- Poster provider interface pattern (real + mock for tests)
-- Order lifecycle: create → validate meals → calculate total → insert to DB
-- Delivery service with Haversine distance calculation and optimistic slot booking
-- 95 new API tests across 7 test files
+### Phase 11: Multiple Plan Variants + Per-Slot Meal Swapping
 
-### Phase 5: Real-Time (Complete)
-- SSE manager: connection tracking per order, event broadcasting
-- Redis pub/sub: order:status channel, message routing to SSE connections
-- Cache service: get/set/del with TTL, scanStream pattern invalidation, convenience methods for meals/slots
-- SSE route: GET /api/v1/sse/orders/:orderId with auth + ownership check
-- 36 SSE/Redis/cache tests across 4 test files
-- Fixed SSE route duplicate registration in tests (buildApp already registers sseRoutes)
+**Backend:**
+- `variant_generator.py`: Pure engine module — generates up to N diverse plans by excluding previously used meals
+- `plan_service.py` refactored: extracted `_build_plan_response()`, `_load_user_targets()`, `_load_active_meals()` helpers
+- `generate_plans_for_user()`: returns multiple transient plan variants (no persistence until cart)
+- `get_slot_alternatives()`: finds alternative meals for a slot using per-meal matcher with slot-level targets
+- `recalculate_plan()`: recomputes auto-extras after a meal swap
+- `POST /api/v1/matching/plans`: generate multiple plan variants
+- `POST /api/v1/matching/plan/alternatives`: get alternative meals for a slot
+- `POST /api/v1/matching/plan/recalculate`: recalculate plan with swapped meals
+- `schemas/matching.py`: SlotAlternativesRequest, PlanItemInput, RecalculatePlanRequest
+- 5 engine tests + 6 route tests (11 new backend tests)
 
-### Phase 3.5: Admin Dashboard (Preview)
-- Built Next.js admin dashboard with Tailwind CSS
-- Dashboard home with stat cards and mock order queue
-- Meals page with table, search, create/edit modal form
-- Sidebar navigation with lucide-react icons
-- Mock data for 7 Thai-inspired meals
+**Frontend:**
+- `SlotSwapModal` component: modal showing alternative meals with scores, macros, and prices
+- `PlanGenerator` rewrite: variant tabs (Plan A/B/C), swap buttons per slot, modal integration
+- API endpoints: `generatePlans()`, `getSlotAlternatives()`, `recalculatePlan()`
+- `SlotAlternative` type added to types.ts
+- 7 PlanGenerator tests + 4 SlotSwapModal tests (11 new frontend tests)
 
-### Phase 3: API Foundation & Database
-- Fastify app factory with `buildApp()` pattern
-- Drizzle ORM schemas: meals, users, user_profiles, orders, order_items
-- Auth plugin: real JWT + mock auth (base64 JSON tokens for tests)
-- CRUD routes: meals (admin write, public read), users/me, users/me/profile
-- Services: meal-service, user-service, profile-service
-- Error handler plugin (ZodError → structured 400)
-- 34 tests
+### Phase 10: Bidirectional Macro Extras + Auto-Extras in Meal Plans
 
-### Phase 2: Meal Plan Engine
-- Scoring: weighted normalized distance, 0-1 range
-- Filters: allergen removal, dietary tag AND logic, category filter
-- Per-meal matcher: filter → score → rank → limit
-- Slot allocator: proportional distribution with rounding correction
-- Optimizer: branch-and-bound with two-level pruning
-- Daily planner: orchestrates full pipeline
-- 75 tests (8 test files)
+**Backend:**
+- `OrderItemCreate` schema: removed `ge=0` constraints to allow negative extras
+- `order_service.create_order()`: validates negative extras don't exceed meal's macros
+- `pricing_service.calculate_item_price()`: uses `max(0, extra)` — only positive extras add cost
+- `MealPlanItem` model: added extra_protein/carbs/fat columns (default 0)
+- `plan_service.generate_plan_for_user()`: auto-calculates extras to close macro gap
+  - Distributes delta across slots proportionally (breakfast 25%, lunch 35%, dinner 30%, snack 10%)
+  - Clamps to meal's available macros (can't subtract more than meal contains)
+  - Returns full meal data per item for frontend cart integration
+  - Returns per-item extra_price and total_extra_price in response
+- Alembic migration: adds 3 float columns to `meal_plan_items`
+- 11 new backend tests (pricing negative extras, order validation, plan extras)
 
-### Phase 1: Shared Types
-- 8 domain Zod schemas + engine types + API contracts
-- All TypeScript types derived via z.infer<>
-- 37 tests (3 test files)
+**Frontend:**
+- `PlanItem` type: added extra_protein/carbs/fat, extra_price, meal fields
+- `DailyPlan` type: added total_extra_price field
+- `calcUnitPrice()` in cart store: uses `Math.max(0, extra)` for pricing
+- `MealCustomizer`: allows negative extras with floor = -meal.macro
+  - `-` button disabled at floor, not at 0
+  - Display: "+10g" for positive, "-10g" for negative
+  - Label changed from "Extra Protein" to "Protein" with "(add only)" pricing note
+- `PlanGeneratorPage`: shows non-zero extras per slot, extra price, total plan price, "Add Plan to Cart" button
+- `CartPage` + `CheckoutPage`: display negative extras as "-10g C" format
+- 7 new frontend tests (cart negative pricing, PlanGenerator extras + add-to-cart)
 
-### Phase 0: Monorepo Scaffolding
-- Turborepo + pnpm workspace (3 apps + 3 packages)
-- TypeScript config: ES2022, strict, bundler moduleResolution
+### Phase 9: Onboarding Wizard + Per-Macro Pricing
+
+**Backend:**
+- `AppSettings` model: global per-gram prices (protein=3.0, carbs=1.0, fat=1.5 THB/g)
+- `Meal` model: optional per-meal pricing overrides (protein/carbs/fat_price_per_gram)
+- `OrderItem` model: extra_protein/carbs/fat fields for audit trail
+- `pricing_service.py`: calculate_item_price() with global fallback + per-meal override
+- `GET /api/v1/settings/pricing` (public) + `PUT /api/v1/settings/pricing` (admin)
+- Order service uses pricing calculator for accurate totals
+- Alembic migration: app_settings table + meal/order_item columns + default seed
+- Schemas updated: MealCreate/Update/Response + OrderItemCreate/Response + SettingsResponse/Update
+- 20 new backend tests (pricing service, settings routes, orders with extras)
+
+**Frontend — Onboarding:**
+- TDEE utility (Mifflin-St Jeor BMR, activity multipliers, macro splits by goal)
+- Constants extraction (FITNESS_GOALS, ACTIVITY_LEVELS, ALLERGEN/DIETARY_OPTIONS)
+- 5-step onboarding wizard (Welcome → Goal → Stats → Macros → Preferences)
+- `useOnboardingCheck` hook: redirects to /onboarding if profile === null
+- AppLayout shows spinner during profile check
+- Route restructuring: /onboarding inside ProtectedRoute but outside AppLayout
+- Profile page: "Recalculate" button navigates to /onboarding
+
+**Frontend — Meal Customization:**
+- `PricingConfig` type + settings API endpoint
+- Cart store: `CartItem` with extraProtein/carbs/fat, `itemPrice()`, `setPricingRates()`
+- `MealCustomizer` modal: base info, +/-5g steppers, live price, add to cart
+- Meals page: tap card opens customizer instead of direct add
+- Cart page: shows extra macros per item, computed line prices
+- Checkout page: sends extra_protein/carbs/fat in order creation
+- Admin pricing page: edit global per-gram rates
+- Admin meals table: shows per-meal pricing override columns
+- 25 new frontend tests (TDEE, onboarding, hook, customizer, cart)
+
+### Phase 8: Admin Dashboard + Production Hardening
+- Admin dashboard with stats cards, revenue display, orders-by-status chart
+- Admin meals table with category, macros, price, status columns
+- Admin orders table with status badges and date
+- Admin customers table with role badges
+- AdminLayout component with top nav + mobile tab nav
+- AdminRoute guard checking `user.is_admin`
+- Rate limiting middleware (100 req/min per IP, bypasses /health)
+- Request logging middleware (method, path, status, response time)
+- Backend Dockerfile (Python 3.12 slim)
+- Frontend Dockerfile (multi-stage Node build + nginx)
+- nginx.conf with SPA fallback and API proxy
+- docker-compose.yml with api + frontend services
+- GitHub Actions CI: ruff lint, pytest, tsc typecheck, vitest
+- 8 backend tests (admin stats, admin orders, admin users, rate limiting)
+- 3 frontend tests (admin dashboard rendering)
+
+### Phase 7: Frontend Advanced
+- Cart page with quantity +/- controls, clear all, total, checkout link
+- Checkout page with order summary and Stripe payment flow
+- Meal plan generator with macro overview bars and 4 slot cards
+- Order history list with status badges
+- Order tracking page with live SSE updates
+- OrderTimeline component (vertical timeline, cancelled state)
+- API endpoints: orders, matching, delivery
+- useSSE hook: EventSource wrapper with token auth and auto-reconnect
+- 15 frontend tests (OrderTimeline, Cart, SSE hook)
+
+### Phase 6: Frontend Core
+- Vite + React 19 + TypeScript + Tailwind v4 + React Router v7
+- Google OAuth login with @react-oauth/google
+- Zustand stores: auth (persisted localStorage), cart, profile
+- API client with JWT header injection
+- AppLayout: desktop top nav + mobile bottom nav with cart badge
+- Components: MacroBar, MealCard, StatusBadge, LoadingSpinner
+- Pages: Login, Home, Meals (category filters), Profile (macro targets, preferences)
+- 18 frontend tests (stores, components)
+
+### Phase 5: Poster + Matching + Subscriptions + SSE
+- PosterProvider protocol + RealPosterProvider (httpx) + MockPosterProvider
+- Poster poller background task (asyncio)
+- Plan service: wire engine to DB (load meals/profile → run engine → persist)
+- Matching routes: POST match meals, POST generate plan
+- Subscriptions: full lifecycle (create, list, pause, resume, cancel)
+- SSE manager with asyncio.Queue per connection
+- Redis pub/sub for order status broadcasting
+- SSE route with auth + ownership check
+- 29 tests
+
+### Phase 4: Orders, Payments, Delivery
+- PaymentProvider protocol + StripePaymentProvider + MockPaymentProvider
+- Order service: create (validate meals, snapshot prices), get, list, update status
+- Payment service: create intent, handle webhook success
+- Delivery service: zones, slots, optimistic booking, Haversine distance
+- Stripe webhook route with signature verification
+- 27 tests
+
+### Phase 3: API Foundation
+- FastAPI app factory with lifespan (DB + Redis init/shutdown), CORS
+- Auth: Google OAuth login → JWT issuance, test token format `test:<google_id>:<email>:<name>`
+- Dependencies: get_current_user (JWT), get_current_admin (isAdmin check)
+- Pydantic v2 schemas: enums (Allergen, DietaryTag, MealCategory, etc.), request/response models
+- Meals CRUD: public list/get + admin create/update/soft-delete
+- Users: get profile, update profile (macro targets, preferences, delivery info)
+- 28 tests
+
+### Phase 2: Meal Plan Engine (Pure Python)
+- Scoring: weighted normalized deviation across calories/protein/carbs/fat
+- Filters: allergen exclusion, dietary tag AND-match, category filter
+- Slot allocator: proportional macro distribution (breakfast 25%, lunch 35%, dinner 30%, snack 10%)
+- Optimizer: branch-and-bound with upper-bound pruning
+- Per-meal matcher: filter → score → sort → top N
+- Daily planner: full pipeline orchestration
+- 75 tests + performance benchmarks (200 meals < 100ms)
+
+### Phase 1: Scaffolding + Models + Migrations
+- pyproject.toml with all dependencies
+- Pydantic Settings for env validation (DATABASE_URL, REDIS_URL, JWT, Stripe, Poster)
+- SQLAlchemy async engine + session factory
+- 11 models: users, user_profiles, meals, orders, order_items, subscriptions, delivery_zones, delivery_slots, meal_plans, meal_plan_items, payment_intents
+- Alembic migration auto-generated from models
+- Seed script: 20 meals + 3 delivery zones + 63 slots
 - Docker Compose: PostgreSQL 16 + Redis 7
-- node-linker=hoisted in .npmrc for Expo compatibility
-- React 18 forced via pnpm overrides (Expo SDK 52 compatibility)
+- Makefile with dev/test/lint/migrate/seed targets

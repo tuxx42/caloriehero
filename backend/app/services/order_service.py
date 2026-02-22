@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.models.meal import Meal
 from app.models.order import Order, OrderItem
 from app.schemas.order import OrderCreate
+from app.services.pricing_service import calculate_item_price
 
 
 async def create_order(
@@ -29,14 +30,35 @@ async def create_order(
     total = 0.0
     for item in data.items:
         meal = meals_by_id[item.meal_id]
-        line_total = meal.price * item.quantity
+
+        # Validate negative extras don't exceed meal's macros
+        if meal.protein + item.extra_protein < 0:
+            raise ValueError(
+                f"Cannot remove more protein than {meal.name} contains"
+            )
+        if meal.carbs + item.extra_carbs < 0:
+            raise ValueError(
+                f"Cannot remove more carbs than {meal.name} contains"
+            )
+        if meal.fat + item.extra_fat < 0:
+            raise ValueError(
+                f"Cannot remove more fat than {meal.name} contains"
+            )
+
+        unit_price = await calculate_item_price(
+            db, meal, item.extra_protein, item.extra_carbs, item.extra_fat
+        )
+        line_total = unit_price * item.quantity
         total += line_total
         order_items.append(
             OrderItem(
                 meal_id=meal.id,
                 meal_name=meal.name,
                 quantity=item.quantity,
-                unit_price=meal.price,
+                unit_price=unit_price,
+                extra_protein=item.extra_protein,
+                extra_carbs=item.extra_carbs,
+                extra_fat=item.extra_fat,
             )
         )
 

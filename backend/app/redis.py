@@ -5,8 +5,10 @@ from app.config import settings
 redis_client: aioredis.Redis | None = None
 
 
-async def get_redis() -> aioredis.Redis:
+async def get_redis() -> aioredis.Redis | None:
     global redis_client
+    if not settings.redis_url:
+        return None
     if redis_client is None:
         redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
     return redis_client
