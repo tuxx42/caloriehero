@@ -2,7 +2,7 @@
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'python -m alembic upgrade head 2>&1 && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
+startCommand = "sh -c 'python -m alembic upgrade head 2>&1 || (python -m alembic stamp base 2>&1 && python -m alembic upgrade head 2>&1) && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
