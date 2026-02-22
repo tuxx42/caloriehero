@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { DailyPlan, DayPlan, MultiDayPlan } from "../api/types";
+import type { DailyPlan, DayPlan, MultiDayPlan, UserProfile } from "../api/types";
+import type { BodyStats } from "./tdee";
+import { calculateWeightProjection } from "./weightProjection";
 
 const MARGIN = 15;
 const PAGE_WIDTH = 210;
@@ -27,6 +29,9 @@ interface GeneratePlanPdfOptions {
   plan: DailyPlan;
   multiDayPlan?: MultiDayPlan;
   radarChartDataUrl?: string;
+  userProfile?: UserProfile;
+  bodyStats?: BodyStats;
+  numDays?: number;
 }
 
 function formatTag(tag: string): string {
@@ -210,6 +215,92 @@ function renderDay(
   doc.text(`Day Total: ฿${dayPrice.toFixed(0)}`, PAGE_WIDTH - MARGIN, y + 3, { align: "right" });
   y += 8;
 
+  // --- FDA Nutrition Facts for this day ---
+  y = renderFdaNutritionFacts(doc, plan, y);
+
+  return y;
+}
+
+/** Render an FDA-style Nutrition Facts label. Returns updated y position. */
+function renderFdaNutritionFacts(
+  doc: jsPDF,
+  plan: DailyPlan,
+  y: number,
+): number {
+  const { actual_macros: actual, target_macros: target } = plan;
+
+  if (y + 60 > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    y = MARGIN;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Nutrition Facts", MARGIN, y + 5);
+  y += 8;
+
+  doc.setFillColor(0, 0, 0);
+  doc.rect(MARGIN, y, CONTENT_WIDTH, 2, "F");
+  y += 4;
+
+  const totalFiber = plan.items.reduce((s, i) => s + (i.meal.fiber ?? 0), 0);
+  const totalSugar = plan.items.reduce((s, i) => s + (i.meal.sugar ?? 0), 0);
+  const fdaRows = [
+    { label: "Total Fat", value: `${Math.round(actual.fat)}g`, dv: Math.round((actual.fat / target.fat) * 100), bold: true },
+    { label: "Total Carbohydrate", value: `${Math.round(actual.carbs)}g`, dv: Math.round((actual.carbs / target.carbs) * 100), bold: true },
+    { label: "  Dietary Fiber", value: `${Math.round(totalFiber)}g`, dv: Math.round((totalFiber / FIBER_RDV) * 100), bold: false },
+    { label: "  Total Sugars", value: `${Math.round(totalSugar)}g`, dv: Math.round((totalSugar / SUGAR_RDV) * 100), bold: false },
+    { label: "Protein", value: `${Math.round(actual.protein)}g`, dv: Math.round((actual.protein / target.protein) * 100), bold: true },
+  ];
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Calories", MARGIN + 2, y + 4);
+  doc.setFontSize(14);
+  doc.text(`${Math.round(actual.calories)}`, MARGIN + CONTENT_WIDTH - 2, y + 4, { align: "right" });
+  y += 7;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+  y += 1;
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.text("% Daily Value*", MARGIN + CONTENT_WIDTH - 2, y + 3, { align: "right" });
+  y += 5;
+
+  for (const row of fdaRows) {
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.1);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", row.bold ? "bold" : "normal");
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${row.label} ${row.value}`, MARGIN + 2, y + 3.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${row.dv}%`, MARGIN + CONTENT_WIDTH - 2, y + 3.5, { align: "right" });
+    y += 5;
+  }
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+  y += 3;
+
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(107, 114, 128);
+  doc.text(
+    `* Percent Daily Values are based on a ${Math.round(target.calories)} calorie diet.`,
+    MARGIN + 2,
+    y + 2,
+  );
+  y += 8;
+
   return y;
 }
 
@@ -355,10 +446,175 @@ function renderMultiDaySummary(
   return y;
 }
 
+const ACTIVITY_LABELS: Record<string, string> = {
+  sedentary: "Sedentary",
+  light: "Light",
+  moderate: "Moderate",
+  active: "Active",
+  very_active: "Very Active",
+};
+
+/** Render a "Your Profile" section with profile info and macro targets. */
+function renderUserProfile(
+  doc: jsPDF,
+  profile: UserProfile,
+  y: number,
+): number {
+  if (y + 40 > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    y = MARGIN;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Your Profile", MARGIN, y + 5);
+  y += 8;
+
+  const profileBody: string[][] = [
+    ["Fitness Goal", formatTag(profile.fitness_goal)],
+  ];
+  if (profile.weight_kg != null) profileBody.push(["Weight", `${profile.weight_kg} kg`]);
+  if (profile.height_cm != null) profileBody.push(["Height", `${profile.height_cm} cm`]);
+  if (profile.age != null) profileBody.push(["Age", `${profile.age}`]);
+  if (profile.gender) profileBody.push(["Gender", formatTag(profile.gender)]);
+  if (profile.activity_level) profileBody.push(["Activity", ACTIVITY_LABELS[profile.activity_level] ?? formatTag(profile.activity_level)]);
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: MARGIN, right: MARGIN + CONTENT_WIDTH / 2 },
+    head: [["Field", "Value"]],
+    body: profileBody,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: {
+      fillColor: [16, 185, 129],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    bodyStyles: { textColor: [55, 65, 81] },
+    theme: "grid",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY + 3;
+
+  // Allergies & dietary preferences
+  if (profile.allergies.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(239, 68, 68);
+    doc.text(`Allergies: ${profile.allergies.map(formatTag).join(", ")}`, MARGIN, y + 3);
+    y += 5;
+  }
+  if (profile.dietary_preferences.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129);
+    doc.text(`Dietary Preferences: ${profile.dietary_preferences.map(formatTag).join(", ")}`, MARGIN, y + 3);
+    y += 5;
+  }
+
+  // Macro targets table
+  if (y + 25 > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    y = MARGIN;
+  }
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Macro Targets", MARGIN, y + 4);
+  y += 6;
+
+  const mt = profile.macro_targets;
+  autoTable(doc, {
+    startY: y,
+    margin: { left: MARGIN, right: MARGIN + CONTENT_WIDTH / 2 },
+    head: [["Nutrient", "Target"]],
+    body: [
+      ["Calories", `${Math.round(mt.calories)} kcal`],
+      ["Protein", `${Math.round(mt.protein)}g`],
+      ["Carbs", `${Math.round(mt.carbs)}g`],
+      ["Fat", `${Math.round(mt.fat)}g`],
+    ],
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: {
+      fillColor: [59, 130, 246],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    bodyStyles: { textColor: [55, 65, 81] },
+    theme: "grid",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  return y;
+}
+
+/** Render a weight projection box. Returns updated y position. */
+function renderWeightProjection(
+  doc: jsPDF,
+  bodyStats: BodyStats,
+  dailyCalories: number,
+  numDays: number,
+  y: number,
+): number {
+  if (y + 35 > PAGE_HEIGHT - MARGIN) {
+    doc.addPage();
+    y = MARGIN;
+  }
+
+  const projection = calculateWeightProjection(bodyStats, dailyCalories, numDays);
+  const isSurplus = projection.dailySurplus >= 0;
+  const projectedWeight = bodyStats.weight + projection.weightChangeKg;
+
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Weight Projection", MARGIN, y + 5);
+  y += 8;
+
+  // Box background
+  doc.setFillColor(isSurplus ? 240 : 254, isSurplus ? 253 : 242, isSurplus ? 244 : 242);
+  doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 28, 2, 2, "F");
+
+  const textColor: [number, number, number] = isSurplus ? [22, 163, 74] : [220, 38, 38];
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(55, 65, 81);
+
+  doc.text(`TDEE: ${projection.tdee} kcal/day`, MARGIN + 3, y + 5);
+  doc.text(
+    `Daily ${isSurplus ? "surplus" : "deficit"}: ${Math.abs(Math.round(projection.dailySurplus))} kcal`,
+    MARGIN + 3,
+    y + 10,
+  );
+  doc.text(
+    `Over ${numDays} days: ${Math.abs(Math.round(projection.totalSurplus))} kcal total`,
+    MARGIN + 3,
+    y + 15,
+  );
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...textColor);
+  doc.text(
+    `${bodyStats.weight.toFixed(1)} kg → ${projectedWeight.toFixed(1)} kg (${isSurplus ? "+" : ""}${projection.weightChangeKg.toFixed(1)} kg)`,
+    MARGIN + 3,
+    y + 22,
+  );
+
+  y += 33;
+
+  return y;
+}
+
 export async function generatePlanPdf({
   plan,
   multiDayPlan,
   radarChartDataUrl,
+  userProfile,
+  bodyStats,
+  numDays,
 }: GeneratePlanPdfOptions): Promise<void> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -396,7 +652,20 @@ export async function generatePlanPdf({
     );
     y += 15;
 
-    // Render summary first
+    // --- User profile ---
+    if (userProfile) {
+      y = renderUserProfile(doc, userProfile, y);
+    }
+
+    // --- Weight projection ---
+    if (bodyStats && numDays) {
+      const avgDailyCal =
+        multiDayPlan.plans.reduce((s, p) => s + p.actual_macros.calories, 0) /
+        multiDayPlan.plans.length;
+      y = renderWeightProjection(doc, bodyStats, avgDailyCal, numDays, y);
+    }
+
+    // Render summary
     y = renderMultiDaySummary(doc, multiDayPlan, y);
 
     // Render each day on a new page
@@ -425,6 +694,16 @@ export async function generatePlanPdf({
     );
     y += 15;
 
+    // --- User profile ---
+    if (userProfile) {
+      y = renderUserProfile(doc, userProfile, y);
+    }
+
+    // --- Weight projection ---
+    if (bodyStats && numDays) {
+      y = renderWeightProjection(doc, bodyStats, plan.actual_macros.calories, numDays, y);
+    }
+
     y = renderDay(doc, plan, y);
 
     // --- Radar chart ---
@@ -438,79 +717,6 @@ export async function generatePlanPdf({
       doc.addImage(radarChartDataUrl, "PNG", chartX, y, chartWidth, chartWidth);
       y += chartWidth + 5;
     }
-
-    // --- Nutrition Facts (FDA-style) for single day ---
-    const { actual_macros: actual, target_macros: target } = plan;
-    if (y + 60 > PAGE_HEIGHT - MARGIN) {
-      doc.addPage();
-      y = MARGIN;
-    }
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(17, 24, 39);
-    doc.text("Nutrition Facts", MARGIN, y + 5);
-    y += 8;
-
-    doc.setFillColor(0, 0, 0);
-    doc.rect(MARGIN, y, CONTENT_WIDTH, 2, "F");
-    y += 4;
-
-    const totalFiber = plan.items.reduce((s, i) => s + (i.meal.fiber ?? 0), 0);
-    const totalSugar = plan.items.reduce((s, i) => s + (i.meal.sugar ?? 0), 0);
-    const fdaRows = [
-      { label: "Total Fat", value: `${Math.round(actual.fat)}g`, dv: Math.round((actual.fat / target.fat) * 100), bold: true },
-      { label: "Total Carbohydrate", value: `${Math.round(actual.carbs)}g`, dv: Math.round((actual.carbs / target.carbs) * 100), bold: true },
-      { label: "  Dietary Fiber", value: `${Math.round(totalFiber)}g`, dv: Math.round((totalFiber / FIBER_RDV) * 100), bold: false },
-      { label: "  Total Sugars", value: `${Math.round(totalSugar)}g`, dv: Math.round((totalSugar / SUGAR_RDV) * 100), bold: false },
-      { label: "Protein", value: `${Math.round(actual.protein)}g`, dv: Math.round((actual.protein / target.protein) * 100), bold: true },
-    ];
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text("Calories", MARGIN + 2, y + 4);
-    doc.setFontSize(14);
-    doc.text(`${Math.round(actual.calories)}`, MARGIN + CONTENT_WIDTH - 2, y + 4, { align: "right" });
-    y += 7;
-
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-    y += 1;
-
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("% Daily Value*", MARGIN + CONTENT_WIDTH - 2, y + 3, { align: "right" });
-    y += 5;
-
-    for (const row of fdaRows) {
-      doc.setDrawColor(180, 180, 180);
-      doc.setLineWidth(0.1);
-      doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-
-      doc.setFontSize(8);
-      doc.setFont("helvetica", row.bold ? "bold" : "normal");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${row.label} ${row.value}`, MARGIN + 2, y + 3.5);
-      doc.setFont("helvetica", "bold");
-      doc.text(`${row.dv}%`, MARGIN + CONTENT_WIDTH - 2, y + 3.5, { align: "right" });
-      y += 5;
-    }
-
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-    y += 3;
-
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(107, 114, 128);
-    doc.text(
-      `* Percent Daily Values are based on a ${Math.round(target.calories)} calorie diet.`,
-      MARGIN + 2,
-      y + 2,
-    );
-    y += 8;
 
     // --- Allergens ---
     const allergenMap = new Map<string, string[]>();

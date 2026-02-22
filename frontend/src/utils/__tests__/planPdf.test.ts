@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { DailyPlan, DayPlan, Meal, MacroTargets, MultiDayPlan } from "../../api/types";
+import type { DailyPlan, DayPlan, Meal, MacroTargets, MultiDayPlan, UserProfile } from "../../api/types";
+import type { BodyStats } from "../tdee";
 
 // Mock jsPDF
 const mockDoc = {
@@ -12,6 +13,7 @@ const mockDoc = {
   line: vi.fn(),
   text: vi.fn(),
   rect: vi.fn(),
+  roundedRect: vi.fn(),
   addImage: vi.fn(),
   addPage: vi.fn(),
   getTextWidth: vi.fn().mockReturnValue(20),
@@ -383,5 +385,158 @@ describe("generatePlanPdf — multi-day", () => {
     await callGenerateMultiDay();
     const textCalls = mockDoc.text.mock.calls;
     expect(textCalls.some((c: unknown[]) => c[0] === "฿1240")).toBe(true);
+  });
+});
+
+const mockUserProfile: UserProfile = {
+  id: "profile-1",
+  user_id: "user-1",
+  macro_targets: targetMacros,
+  fitness_goal: "cutting",
+  allergies: ["dairy", "gluten"],
+  dietary_preferences: ["high_protein"],
+  delivery_address: null,
+  delivery_lat: null,
+  delivery_lng: null,
+  weight_kg: 85,
+  height_cm: 180,
+  age: 30,
+  gender: "male",
+  activity_level: "moderate",
+};
+
+const mockBodyStats: BodyStats = {
+  weight: 85,
+  height: 180,
+  age: 30,
+  gender: "male",
+  activityLevel: "moderate",
+};
+
+describe("generatePlanPdf — FDA nutrition facts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDoc.lastAutoTable = { finalY: 100 };
+  });
+
+  it("renders FDA nutrition facts for single day", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockPlan });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Nutrition Facts")).toBe(true);
+    expect(textCalls.some((c: unknown[]) => c[0] === "Calories")).toBe(true);
+    expect(
+      textCalls.some(
+        (c: unknown[]) => typeof c[0] === "string" && c[0] === "% Daily Value*",
+      ),
+    ).toBe(true);
+  });
+
+  it("renders FDA nutrition facts for each day in multi-day", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockDay1, multiDayPlan: mockMultiDayPlan });
+    const textCalls = mockDoc.text.mock.calls;
+    // "Nutrition Facts" should appear once per day (2 days)
+    const nutritionFactsCount = textCalls.filter(
+      (c: unknown[]) => c[0] === "Nutrition Facts",
+    ).length;
+    expect(nutritionFactsCount).toBe(2);
+  });
+});
+
+describe("generatePlanPdf — user profile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDoc.lastAutoTable = { finalY: 100 };
+  });
+
+  it("renders user profile section when provided", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockPlan, userProfile: mockUserProfile, bodyStats: mockBodyStats });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Your Profile")).toBe(true);
+    expect(textCalls.some((c: unknown[]) => c[0] === "Macro Targets")).toBe(true);
+    // Check profile autoTable has fitness goal
+    const profileTable = mockAutoTable.mock.calls.find(
+      (call: unknown[]) => {
+        const opts = call[1] as { head?: string[][] };
+        return opts.head?.[0]?.[0] === "Field" && opts.head?.[0]?.[1] === "Value";
+      },
+    );
+    expect(profileTable).toBeDefined();
+    const body = (profileTable![1] as { body: string[][] }).body;
+    expect(body.some((r: string[]) => r[0] === "Fitness Goal" && r[1] === "Cutting")).toBe(true);
+    expect(body.some((r: string[]) => r[0] === "Weight" && r[1] === "85 kg")).toBe(true);
+  });
+
+  it("renders allergies and dietary preferences", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockPlan, userProfile: mockUserProfile });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(
+      textCalls.some(
+        (c: unknown[]) => typeof c[0] === "string" && c[0].includes("Allergies:"),
+      ),
+    ).toBe(true);
+    expect(
+      textCalls.some(
+        (c: unknown[]) => typeof c[0] === "string" && c[0].includes("Dietary Preferences:"),
+      ),
+    ).toBe(true);
+  });
+
+  it("skips profile and projection when not provided", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockPlan });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Your Profile")).toBe(false);
+    expect(textCalls.some((c: unknown[]) => c[0] === "Weight Projection")).toBe(false);
+  });
+});
+
+describe("generatePlanPdf — weight projection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDoc.lastAutoTable = { finalY: 100 };
+  });
+
+  it("renders weight projection when bodyStats provided", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockPlan, bodyStats: mockBodyStats, numDays: 7 });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Weight Projection")).toBe(true);
+    // Check TDEE text
+    expect(
+      textCalls.some(
+        (c: unknown[]) => typeof c[0] === "string" && c[0].includes("TDEE:"),
+      ),
+    ).toBe(true);
+    // Check surplus/deficit text
+    expect(
+      textCalls.some(
+        (c: unknown[]) =>
+          typeof c[0] === "string" &&
+          (c[0].includes("surplus") || c[0].includes("deficit")),
+      ),
+    ).toBe(true);
+    // Check weight projection arrow text
+    expect(
+      textCalls.some(
+        (c: unknown[]) =>
+          typeof c[0] === "string" && c[0].includes("kg →"),
+      ),
+    ).toBe(true);
+  });
+
+  it("renders weight projection for multi-day", async () => {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({
+      plan: mockDay1,
+      multiDayPlan: mockMultiDayPlan,
+      bodyStats: mockBodyStats,
+      numDays: 2,
+    });
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Weight Projection")).toBe(true);
   });
 });

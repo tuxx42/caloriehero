@@ -371,6 +371,9 @@ export function PlanGeneratorPage() {
       await generatePlanPdf({
         plan: activePlan,
         multiDayPlan: mode === "multi" ? multiDayPlan ?? undefined : undefined,
+        userProfile: profile ?? undefined,
+        bodyStats,
+        numDays: mode === "multi" ? multiDayPlan?.days : 1,
       });
     } finally {
       setDownloadingPdf(false);
@@ -593,6 +596,7 @@ export function PlanGeneratorPage() {
               numDays={mode === "multi" ? multiDayPlan?.days : 1}
               dailyCalories={activePlan.actual_macros.calories}
               multiDayPlan={mode === "multi" ? multiDayPlan ?? undefined : undefined}
+              userProfile={profile ?? undefined}
             />
           )}
 
