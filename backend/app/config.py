@@ -1,8 +1,16 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://caloriehero:caloriehero@localhost:5432/caloriehero"
+
+    @model_validator(mode="after")
+    def _fix_database_url(self) -> "Settings":
+        # Railway provides postgresql:// but SQLAlchemy async needs postgresql+asyncpg://
+        if self.database_url.startswith("postgresql://"):
+            self.database_url = self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self
     redis_url: str = ""
 
     google_client_id: str = ""
