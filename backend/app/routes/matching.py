@@ -10,6 +10,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.matching import RecalculatePlanRequest, SlotAlternativesRequest
 from app.services.plan_service import (
+    generate_multi_day_plan_for_user,
     generate_plan_for_user,
     generate_plans_for_user,
     get_slot_alternatives,
@@ -66,6 +67,27 @@ async def generate_plans_route(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
+
+
+@router.post("/multi-day-plan")
+async def generate_multi_day_plan_route(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    days: Annotated[int, Query(ge=4, le=30)] = 7,
+) -> dict:
+    """Generate a multi-day meal plan."""
+    try:
+        result = await generate_multi_day_plan_for_user(db, user.id, days)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Could not generate multi-day plan — no suitable meals found",
+        )
+    return result
 
 
 @router.post("/plan/alternatives")

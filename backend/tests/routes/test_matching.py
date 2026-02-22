@@ -276,6 +276,81 @@ class TestGeneratePlans:
 
 
 @pytest.mark.asyncio
+class TestMultiDayPlan:
+    async def test_generate_multi_day_plan(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        await _seed_meals(db_session)
+
+        resp = await client.post(
+            "/api/v1/matching/multi-day-plan?days=4",
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["days"] == 4
+        assert "has_repeats" in data
+        assert "total_unique_meals" in data
+        assert "total_repeated_meals" in data
+        assert "plans" in data
+        assert len(data["plans"]) == 4
+        assert "total_price" in data
+
+    async def test_multi_day_plan_has_day_info(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        await _seed_meals(db_session)
+
+        resp = await client.post(
+            "/api/v1/matching/multi-day-plan?days=4",
+            headers=make_auth_header(user.id),
+        )
+        data = resp.json()
+        for i, plan in enumerate(data["plans"]):
+            assert plan["day"] == i + 1
+            assert "date" in plan
+            assert "repeated_meal_ids" in plan
+            assert "items" in plan
+            assert len(plan["items"]) == 4
+
+    async def test_multi_day_plan_no_meals_returns_404(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        resp = await client.post(
+            "/api/v1/matching/multi-day-plan?days=7",
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 404
+
+    async def test_multi_day_plan_requires_auth(self, client: AsyncClient) -> None:
+        resp = await client.post("/api/v1/matching/multi-day-plan?days=7")
+        assert resp.status_code in (401, 403)
+
+    async def test_multi_day_plan_validates_days_range(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        user = await create_test_user(db_session)
+        await _seed_meals(db_session)
+
+        # Too few days
+        resp = await client.post(
+            "/api/v1/matching/multi-day-plan?days=2",
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 422
+
+        # Too many days
+        resp = await client.post(
+            "/api/v1/matching/multi-day-plan?days=31",
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 class TestSlotAlternatives:
     async def test_get_alternatives(
         self, client: AsyncClient, db_session: AsyncSession

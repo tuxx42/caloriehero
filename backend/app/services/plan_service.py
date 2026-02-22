@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.engine.constants import DEFAULT_SLOT_PERCENTAGES
 from app.engine.daily_planner import generate_daily_plan
+from app.engine.multi_day_generator import generate_multi_day_plan
 from app.engine.per_meal_matcher import match_meals
 from app.engine.scoring import calculate_score
 from app.engine.slot_allocator import allocate_slots
@@ -438,3 +439,56 @@ async def recalculate_plan(
     )
 
     return await _build_plan_response(db, plan_result, targets, db_meals_by_id)
+
+
+async def generate_multi_day_plan_for_user(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    num_days: int,
+) -> dict | None:
+    """Generate a multi-day meal plan (ephemeral, not persisted)."""
+    from datetime import timedelta
+
+    targets, allergies, preferences = await _load_user_targets(db, user_id)
+    db_meals = await _load_active_meals(db)
+    engine_meals = [_db_meal_to_engine(m) for m in db_meals]
+
+    request = PlanRequest(
+        daily_targets=targets,
+        slots=DEFAULT_SLOT_PERCENTAGES,
+        allergies=allergies,
+        dietary_preferences=preferences,
+    )
+    multi_result = generate_multi_day_plan(engine_meals, request, num_days)
+
+    if not multi_result.days:
+        return None
+
+    db_meals_by_id = {str(m.id): m for m in db_meals}
+    start_date = date.today()
+
+    plans = []
+    total_price = 0.0
+    for day_result in multi_result.days:
+        day_date = start_date + timedelta(days=day_result.day - 1)
+        resp = await _build_plan_response(
+            db, day_result.plan, targets, db_meals_by_id,
+            variant_id=str(uuid.uuid4()),
+        )
+        resp["day"] = day_result.day
+        resp["date"] = day_date.isoformat()
+        resp["repeated_meal_ids"] = day_result.repeated_meal_ids
+
+        day_price = sum(item["meal"]["price"] for item in resp["items"]) + resp["total_extra_price"]
+        total_price += day_price
+        plans.append(resp)
+
+    return {
+        "id": str(uuid.uuid4()),
+        "days": num_days,
+        "has_repeats": multi_result.has_repeats,
+        "total_unique_meals": multi_result.total_unique_meals,
+        "total_repeated_meals": multi_result.total_repeated_meals,
+        "plans": plans,
+        "total_price": round(total_price, 2),
+    }

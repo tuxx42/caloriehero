@@ -1,5 +1,37 @@
 # CalorieHero - Changelog
 
+## 2026-02-22 — Multi-Day Meal Planning (4-30 Days)
+
+### Engine
+- `multi_day_generator.py`: Loops `generate_daily_plan()` with progressive meal exclusion across days
+- New types: `DayPlanResult` (day + plan + repeated_meal_ids), `MultiDayPlanResult` (aggregate stats + has_repeats property)
+- Falls back to full meal pool when unused meals exhausted, tracking which meals are repeated
+- 8 new engine tests covering repeat detection, aggregate stats, pool exhaustion
+
+### Backend
+- `POST /api/v1/matching/multi-day-plan?days=7`: Ephemeral multi-day plan generation (4-30 days)
+- `plan_service.generate_multi_day_plan_for_user()`: Wires engine to DB, computes dates and total price
+- Response includes per-day plans with `repeated_meal_ids`, `has_repeats`, `total_unique_meals`, `total_price`
+- 5 new route tests (generation, day info, 404, auth, validation)
+
+### Database
+- `MultiDayMealPlan` model: id, user_id, num_days, has_repeats, total_unique_meals, total_repeated_meals
+- `MealPlan` extended: nullable `multi_day_plan_id` FK + `day_number`
+- Alembic migration `55c9f1d75a78`
+
+### Frontend
+- **Mode toggle**: "1 Day" / "Multi-Day" segmented control
+- **Day count selector**: Number input (4-30) in multi mode
+- **DayTabBar component**: Horizontally scrollable day tabs with emerald highlight and amber repeat dots
+- **Repeat badges**: Amber "Repeated" badge on slot cards with repeated meals
+- **Repeat warning banner**: Amber alert when menu variety causes repeats
+- **Summary header**: N-Day Plan with unique meal count and avg match score
+- **Add All Days to Cart**: Iterates all days' items
+- **Per-day swap**: Swap recalculates single day, recomputes repeats client-side
+- 4 DayTabBar tests + 8 PlanGenerator multi-day tests
+
+---
+
 ## 2026-02-22 — Meal Nutrition Datasheet + Deduplicate Meals
 
 ### Meal Nutrition Datasheet

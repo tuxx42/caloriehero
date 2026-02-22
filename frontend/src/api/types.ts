@@ -112,6 +112,21 @@ export interface DailyPlan {
   items: PlanItem[];
 }
 
+export interface DayPlan extends DailyPlan {
+  day: number;
+  repeated_meal_ids: string[];
+}
+
+export interface MultiDayPlan {
+  id: string;
+  days: number;
+  has_repeats: boolean;
+  total_unique_meals: number;
+  total_repeated_meals: number;
+  plans: DayPlan[];
+  total_price: number;
+}
+
 export interface DeliveryZone {
   id: string;
   name: string;

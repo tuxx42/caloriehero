@@ -1,7 +1,7 @@
 from app.models.base import Base
 from app.models.delivery import DeliverySlot, DeliveryZone
 from app.models.meal import Meal
-from app.models.meal_plan import MealPlan, MealPlanItem
+from app.models.meal_plan import MealPlan, MealPlanItem, MultiDayMealPlan
 from app.models.order import Order, OrderItem
 from app.models.payment import PaymentIntent
 from app.models.settings import AppSettings
@@ -20,6 +20,7 @@ __all__ = [
     "DeliverySlot",
     "MealPlan",
     "MealPlanItem",
+    "MultiDayMealPlan",
     "PaymentIntent",
     "AppSettings",
 ]

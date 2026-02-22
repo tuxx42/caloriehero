@@ -16,16 +16,25 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 - **Payments**: Stripe PaymentIntents + webhooks
 - **Deployment**: Railway single-service (FastAPI serves API + static frontend) + Postgres add-on
 
-### Latest: Meal Nutrition Datasheet + Dedup
+### Latest: Multi-Day Meal Planning (4-30 Days)
+- **Multi-day engine**: New `generate_multi_day_plan()` loops daily planner with progressive meal exclusion
+  - Tracks used meals across days, falls back to full pool when exhausted
+  - Reports per-day repeated meal IDs and aggregate stats (unique/repeated counts)
+- **API**: `POST /api/v1/matching/multi-day-plan?days=7` (ephemeral, not persisted)
+- **DB model**: `MultiDayMealPlan` parent table + nullable FK on `MealPlan` (multi_day_plan_id, day_number)
+- **Frontend**: Mode toggle (1 Day / Multi-Day), day count selector (4-30), horizontal DayTabBar
+  - Amber dot on tabs with repeated meals, "Repeated" badge on slot cards
+  - Repeat warning banner when menu variety is limited
+  - Summary header with unique meal count and avg match score
+  - "Add All Days to Cart" adds every day's meals
+  - Swap works per-day with client-side repeat recomputation
+- **Alembic migration**: `55c9f1d75a78` adds multi_day_meal_plans table + meal_plans FK columns
+- 8 new engine tests + 5 new route tests + 4 DayTabBar tests + 8 PlanGenerator multi-day tests
+
+### Previous: Meal Nutrition Datasheet + Dedup
 - **Meal Datasheet modal**: Tap any meal in generated plan to see detailed nutritional breakdown
-  - SVG radar chart comparing meal macros vs daily targets (6 axes: calories, protein, carbs, fat, fiber, sugar)
-  - % Daily Value table with computed percentages
-  - Allergen badges (red pills) and dietary tag badges (green pills)
-  - Nutritional benefits text blurb per meal
-  - Same bottom-sheet/centered modal pattern as MealCustomizer
-- **Nutritional benefits field**: Added `nutritional_benefits` text column to Meal model with 2-3 sentence descriptions for all 20 seed meals
-- **Seed script dedup**: Added existence guards for meals, zones, slots, and app settings — re-running seed no longer creates duplicates
-- **Alembic migration**: `c4d5e6f7g8h9` adds `nutritional_benefits` column
+- **Nutritional benefits field**: Added `nutritional_benefits` text column to Meal model
+- **Seed script dedup**: Re-running seed no longer creates duplicates
 - 12 new frontend tests (MealDatasheet component)
 
 ### Railway Deployment Setup
@@ -145,7 +154,7 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 
 | Component | Tests |
 |-----------|-------|
-| Backend - Engine | 80 |
+| Backend - Engine | 83 |
 | Backend - Health | 1 |
 | Backend - Auth | 4 |
 | Backend - Meals | 14 |
@@ -153,7 +162,7 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 | Backend - Orders | 14 |
 | Backend - Delivery | 10 |
 | Backend - Webhooks | 3 |
-| Backend - Matching | 17 |
+| Backend - Matching | 22 |
 | Backend - Subscriptions | 11 |
 | Backend - SSE | 8 |
 | Backend - Poster | 4 |
@@ -163,8 +172,8 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 | Backend - Settings | 8 |
 | Backend - E2E | 3 |
 | Frontend - Stores | 16 |
-| Frontend - Components | 15 |
+| Frontend - Components | 19 |
 | Frontend - Hooks | 8 |
-| Frontend - Pages | 27 |
+| Frontend - Pages | 35 |
 | Frontend - MealDatasheet | 12 |
-| **Total** | **305** |
+| **Total** | **330** |

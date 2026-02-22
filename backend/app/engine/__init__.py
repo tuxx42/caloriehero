@@ -10,6 +10,7 @@ from app.engine.filters import (
     filter_by_dietary_tags,
     filter_meals,
 )
+from app.engine.multi_day_generator import generate_multi_day_plan
 from app.engine.optimizer import find_optimal_plan
 from app.engine.per_meal_matcher import match_meals
 from app.engine.scoring import calculate_deviation, calculate_score
@@ -29,6 +30,7 @@ __all__ = [
     "filter_meals",
     "find_optimal_plan",
     "generate_daily_plan",
+    "generate_multi_day_plan",
     "generate_plan_variants",
     "match_meals",
 ]

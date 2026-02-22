@@ -131,3 +131,21 @@ class PlanResult:
     total_score: float
     actual_macros: NutritionalInfo
     target_macros: MacroTargets
+
+
+@dataclass(frozen=True)
+class DayPlanResult:
+    day: int
+    plan: PlanResult
+    repeated_meal_ids: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class MultiDayPlanResult:
+    days: list[DayPlanResult]
+    total_unique_meals: int
+    total_repeated_meals: int
+
+    @property
+    def has_repeats(self) -> bool:
+        return self.total_repeated_meals > 0

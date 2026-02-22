@@ -1,5 +1,10 @@
 import { api } from "../client";
-import type { DailyPlan, ScoredMeal, SlotAlternative } from "../types";
+import type {
+  DailyPlan,
+  MultiDayPlan,
+  ScoredMeal,
+  SlotAlternative,
+} from "../types";
 
 export function matchMeals(limit = 10): Promise<ScoredMeal[]> {
   return api.post<ScoredMeal[]>(`/matching/meals?limit=${limit}`);
@@ -29,4 +34,8 @@ export function recalculatePlan(
   items: { slot: string; meal_id: string }[],
 ): Promise<DailyPlan> {
   return api.post<DailyPlan>("/matching/plan/recalculate", { items });
+}
+
+export function generateMultiDayPlan(days = 7): Promise<MultiDayPlan> {
+  return api.post<MultiDayPlan>(`/matching/multi-day-plan?days=${days}`);
 }
