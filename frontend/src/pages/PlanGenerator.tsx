@@ -577,6 +577,7 @@ export function PlanGeneratorPage() {
               bodyStats={bodyStats}
               numDays={mode === "multi" ? multiDayPlan?.days : 1}
               dailyCalories={activePlan.actual_macros.calories}
+              multiDayPlan={mode === "multi" ? multiDayPlan ?? undefined : undefined}
             />
           )}
 

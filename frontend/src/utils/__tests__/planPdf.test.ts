@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { DailyPlan, Meal, MacroTargets } from "../../api/types";
+import type { DailyPlan, DayPlan, Meal, MacroTargets, MultiDayPlan } from "../../api/types";
 
 // Mock jsPDF
 const mockDoc = {
@@ -168,7 +168,56 @@ const mockPlan: DailyPlan = {
   ],
 };
 
-describe("generatePlanPdf", () => {
+const mockDay1: DayPlan = {
+  ...mockPlan,
+  id: "day-1",
+  day: 1,
+  date: "2026-02-22",
+  repeated_meal_ids: [],
+};
+
+const mockDay2: DayPlan = {
+  ...mockPlan,
+  id: "day-2",
+  day: 2,
+  date: "2026-02-23",
+  total_score: 0.88,
+  repeated_meal_ids: ["m1"],
+  items: [
+    {
+      ...mockPlan.items[0],
+      meal_name: "Yogurt Parfait",
+      meal: makeMeal({ id: "m5", name: "Yogurt Parfait", calories: 350, protein: 25, carbs: 45, fat: 10, price: 110 }),
+    },
+    {
+      ...mockPlan.items[1],
+      meal_name: "Beef Stir Fry",
+      meal: makeMeal({ id: "m6", name: "Beef Stir Fry", calories: 550, protein: 42, carbs: 55, fat: 20, price: 220 }),
+    },
+    {
+      ...mockPlan.items[2],
+      meal_name: "Pasta Bowl",
+      meal: makeMeal({ id: "m7", name: "Pasta Bowl", calories: 480, protein: 30, carbs: 60, fat: 16, price: 190 }),
+    },
+    {
+      ...mockPlan.items[3],
+      meal_name: "Trail Mix",
+      meal: makeMeal({ id: "m8", name: "Trail Mix", calories: 200, protein: 8, carbs: 25, fat: 10, price: 70 }),
+    },
+  ],
+};
+
+const mockMultiDayPlan: MultiDayPlan = {
+  id: "multi-1",
+  days: 2,
+  has_repeats: true,
+  total_unique_meals: 7,
+  total_repeated_meals: 1,
+  total_price: 1240,
+  plans: [mockDay1, mockDay2],
+};
+
+describe("generatePlanPdf — single day", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDoc.lastAutoTable = { finalY: 100 };
@@ -194,11 +243,8 @@ describe("generatePlanPdf", () => {
 
   it("renders rect calls for macro split bar", async () => {
     await callGenerate();
-    // rect is called for: 3 macro split segments + FDA black bar + calorie contribution bars + legend dots
     const rectCalls = mockDoc.rect.mock.calls;
-    // At minimum 3 macro split + 1 FDA bar + 4 calorie bars = 8+
     expect(rectCalls.length).toBeGreaterThanOrEqual(3);
-    // All rect calls use fill style "F"
     for (const call of rectCalls) {
       expect(call[4]).toBe("F");
     }
@@ -207,10 +253,8 @@ describe("generatePlanPdf", () => {
   it("makes 1 autoTable call for meal schedule", async () => {
     await callGenerate();
     expect(mockAutoTable).toHaveBeenCalledTimes(1);
-    // First table: meal schedule
     const firstCall = mockAutoTable.mock.calls[0][1];
     expect(firstCall.head[0]).toEqual(["Meal", "Item", "Cal", "Pro", "Carb", "Fat"]);
-    // Includes TOTAL and TARGET rows in the body
     const body = firstCall.body;
     expect(body[body.length - 2][0]).toBe("TOTAL");
     expect(body[body.length - 1][0]).toBe("TARGET");
@@ -237,7 +281,6 @@ describe("generatePlanPdf", () => {
     await callGenerate();
     const textCalls = mockDoc.text.mock.calls;
     expect(textCalls.some((c: unknown[]) => c[0] === "Allergens")).toBe(true);
-    // Dairy appears in breakfast, lunch, snack
     expect(
       textCalls.some(
         (c: unknown[]) =>
@@ -263,5 +306,82 @@ describe("generatePlanPdf", () => {
     const textCalls = mockDoc.text.mock.calls;
     // Total: 120+200+250+80 + 40 extra = 690
     expect(textCalls.some((c: unknown[]) => c[0] === "฿690")).toBe(true);
+  });
+});
+
+describe("generatePlanPdf — multi-day", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDoc.lastAutoTable = { finalY: 100 };
+  });
+
+  async function callGenerateMultiDay() {
+    const { generatePlanPdf } = await import("../planPdf");
+    await generatePlanPdf({ plan: mockDay1, multiDayPlan: mockMultiDayPlan });
+  }
+
+  it("saves with multi-day filename", async () => {
+    await callGenerateMultiDay();
+    expect(mockDoc.save).toHaveBeenCalledWith("meal-plan-2day-2026-02-22.pdf");
+  });
+
+  it("renders multi-day title with days count", async () => {
+    await callGenerateMultiDay();
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "2-Day Meal Plan")).toBe(true);
+  });
+
+  it("renders date range", async () => {
+    await callGenerateMultiDay();
+    const textCalls = mockDoc.text.mock.calls;
+    expect(
+      textCalls.some(
+        (c: unknown[]) =>
+          typeof c[0] === "string" && c[0].includes("2026-02-22") && c[0].includes("2026-02-23"),
+      ),
+    ).toBe(true);
+  });
+
+  it("renders avg match score", async () => {
+    await callGenerateMultiDay();
+    const textCalls = mockDoc.text.mock.calls;
+    // avg = (0.92 + 0.88) / 2 = 0.9 → 90%
+    expect(textCalls.some((c: unknown[]) => c[0] === "90% avg match")).toBe(true);
+  });
+
+  it("adds pages for each day", async () => {
+    await callGenerateMultiDay();
+    // 2 addPage calls: one per day (days render on new pages)
+    expect(mockDoc.addPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders day labels", async () => {
+    await callGenerateMultiDay();
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "Day 1")).toBe(true);
+    expect(textCalls.some((c: unknown[]) => c[0] === "Day 2")).toBe(true);
+  });
+
+  it("renders summary table with unique/repeated meal counts", async () => {
+    await callGenerateMultiDay();
+    // Summary table is the first autoTable call
+    const summaryCall = mockAutoTable.mock.calls[0][1];
+    expect(summaryCall.head[0]).toEqual(["Metric", "Average / Day", "Target"]);
+    // Check unique meals row
+    const body = summaryCall.body;
+    expect(body.some((r: string[]) => r[0] === "Unique Meals" && r[1] === "7")).toBe(true);
+    expect(body.some((r: string[]) => r[0] === "Repeated Meals" && r[1] === "1")).toBe(true);
+  });
+
+  it("makes 3 autoTable calls: summary + 2 day schedules", async () => {
+    await callGenerateMultiDay();
+    // 1 summary table + 2 day schedule tables = 3
+    expect(mockAutoTable).toHaveBeenCalledTimes(3);
+  });
+
+  it("renders total price for multi-day", async () => {
+    await callGenerateMultiDay();
+    const textCalls = mockDoc.text.mock.calls;
+    expect(textCalls.some((c: unknown[]) => c[0] === "฿1240")).toBe(true);
   });
 });

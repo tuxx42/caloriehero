@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { DailyPlan } from "../../api/types";
+import type { DailyPlan, MultiDayPlan } from "../../api/types";
 import type { BodyStats } from "../../utils/tdee";
 import { calculateWeightProjection } from "../../utils/weightProjection";
 import { WeightProjectionCard } from "../common/WeightProjectionCard";
@@ -24,6 +24,8 @@ interface PlanDatasheetProps {
   dailyCalories?: number;
   /** Render inline (no modal overlay) when true */
   inline?: boolean;
+  /** Pass the full multi-day plan for PDF generation */
+  multiDayPlan?: MultiDayPlan;
 }
 
 const SLOT_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
@@ -68,7 +70,7 @@ function SlotIcon({ slot, className }: { slot: string; className?: string }) {
   return <IconComp className={className} />;
 }
 
-export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories, inline }: PlanDatasheetProps) {
+export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories, inline, multiDayPlan }: PlanDatasheetProps) {
   const radarRef = useRef<SVGSVGElement>(null);
   const [downloading, setDownloading] = useState(false);
   const { actual_macros: actual, target_macros: target } = plan;
@@ -80,7 +82,7 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
       if (radarRef.current) {
         radarChartDataUrl = await svgToDataUrl(radarRef.current, 280, 280);
       }
-      await generatePlanPdf({ plan, radarChartDataUrl });
+      await generatePlanPdf({ plan, multiDayPlan, radarChartDataUrl });
     } finally {
       setDownloading(false);
     }

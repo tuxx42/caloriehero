@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { DailyPlan } from "../api/types";
+import type { DailyPlan, DayPlan, MultiDayPlan } from "../api/types";
 
 const MARGIN = 15;
 const PAGE_WIDTH = 210;
@@ -25,6 +25,7 @@ const SLOT_LABELS: Record<string, string> = {
 
 interface GeneratePlanPdfOptions {
   plan: DailyPlan;
+  multiDayPlan?: MultiDayPlan;
   radarChartDataUrl?: string;
 }
 
@@ -35,14 +36,14 @@ function formatTag(tag: string): string {
     .join(" ");
 }
 
-export async function generatePlanPdf({
-  plan,
-  radarChartDataUrl,
-}: GeneratePlanPdfOptions): Promise<void> {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+/** Render a single day's content onto the PDF. Returns the updated y position. */
+function renderDay(
+  doc: jsPDF,
+  plan: DailyPlan,
+  y: number,
+  dayLabel?: string,
+): number {
   const { actual_macros: actual, target_macros: target } = plan;
-
-  let y = MARGIN;
 
   function ensureSpace(needed: number) {
     if (y + needed > PAGE_HEIGHT - MARGIN) {
@@ -51,30 +52,33 @@ export async function generatePlanPdf({
     }
   }
 
-  // --- 1. Title ---
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39); // gray-900
-  doc.text("Daily Meal Plan", MARGIN, y + 7);
+  // --- Day header ---
+  if (dayLabel) {
+    ensureSpace(15);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129);
+    doc.text(dayLabel, MARGIN, y + 5);
 
-  // Date + match score right-aligned
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128); // gray-500
-  doc.text(plan.date, PAGE_WIDTH - MARGIN, y + 3, { align: "right" });
-  doc.setTextColor(16, 185, 129); // emerald-500
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `${Math.round(plan.total_score * 100)}% match`,
-    PAGE_WIDTH - MARGIN,
-    y + 8,
-    { align: "right" },
-  );
-  y += 15;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    doc.text(plan.date, MARGIN + doc.getTextWidth(dayLabel) + 5, y + 5);
 
-  // --- 2. Meal Schedule Table (NEW) ---
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129);
+    doc.text(
+      `${Math.round(plan.total_score * 100)}% match`,
+      PAGE_WIDTH - MARGIN,
+      y + 5,
+      { align: "right" },
+    );
+    y += 10;
+  }
+
+  // --- Meal Schedule Table ---
   ensureSpace(50);
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(17, 24, 39);
   doc.text("Meal Schedule", MARGIN, y + 5);
@@ -90,7 +94,6 @@ export async function generatePlanPdf({
     `${Math.round(item.meal.fat)}g`,
   ]);
 
-  // Add totals and target rows
   scheduleBody.push([
     "TOTAL",
     "",
@@ -121,7 +124,6 @@ export async function generatePlanPdf({
     },
     bodyStyles: { textColor: [55, 65, 81] },
     didParseCell(data) {
-      // Bold the TOTAL and TARGET rows
       if (data.section === "body" && data.row.index >= plan.items.length) {
         data.cell.styles.fontStyle = "bold";
         if (data.row.index === plan.items.length) {
@@ -134,23 +136,8 @@ export async function generatePlanPdf({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   y = (doc as any).lastAutoTable.finalY + 5;
 
-  // --- 3. Radar chart ---
-  if (radarChartDataUrl) {
-    ensureSpace(65);
-    const chartWidth = 55;
-    const chartX = MARGIN + (CONTENT_WIDTH - chartWidth) / 2;
-    doc.addImage(radarChartDataUrl, "PNG", chartX, y, chartWidth, chartWidth);
-    y += chartWidth + 5;
-  }
-
-  // --- 4. Macro split bar ---
-  ensureSpace(20);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text("Macro Split", MARGIN, y + 5);
-  y += 9;
-
+  // --- Macro split bar ---
+  ensureSpace(18);
   const proteinCal = actual.protein * 4;
   const carbsCal = actual.carbs * 4;
   const fatCal = actual.fat * 9;
@@ -159,20 +146,20 @@ export async function generatePlanPdf({
   const fatPct = Math.round((fatCal / totalMacroCal) * 100);
   const carbsPct = 100 - proteinPct - fatPct;
 
-  const barHeight = 6;
+  const barHeight = 5;
   const proteinW = (proteinPct / 100) * CONTENT_WIDTH;
   const carbsW = (carbsPct / 100) * CONTENT_WIDTH;
   const fatW = CONTENT_WIDTH - proteinW - carbsW;
 
-  doc.setFillColor(59, 130, 246); // blue
+  doc.setFillColor(59, 130, 246);
   doc.rect(MARGIN, y, proteinW, barHeight, "F");
-  doc.setFillColor(245, 158, 11); // amber
+  doc.setFillColor(245, 158, 11);
   doc.rect(MARGIN + proteinW, y, carbsW, barHeight, "F");
-  doc.setFillColor(244, 63, 94); // rose
+  doc.setFillColor(244, 63, 94);
   doc.rect(MARGIN + proteinW + carbsW, y, fatW, barHeight, "F");
   y += barHeight + 2;
 
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(107, 114, 128);
   doc.text(
@@ -181,144 +168,10 @@ export async function generatePlanPdf({
     y + 3,
     { align: "center" },
   );
-  y += 8;
-
-  // --- 5. Calorie & macro gap ---
-  ensureSpace(30);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text("Calorie & Macro Gap", MARGIN, y + 5);
-  y += 10;
-
-  const calorieDelta = actual.calories - target.calories;
-  const sign = calorieDelta >= 0 ? "+" : "";
-  const deltaLabel = calorieDelta >= 0 ? "over target" : "under target";
-  if (calorieDelta >= 0) {
-    doc.setTextColor(16, 185, 129);
-  } else {
-    doc.setTextColor(239, 68, 68);
-  }
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text(`${sign}${Math.round(calorieDelta)} kcal`, MARGIN, y + 5);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(deltaLabel, MARGIN + 45, y + 5);
-  y += 10;
-
-  const totalFiber = plan.items.reduce((s, i) => s + (i.meal.fiber ?? 0), 0);
-  const macroGaps = [
-    { label: "Protein", delta: actual.protein - target.protein, unit: "g" },
-    { label: "Carbs", delta: actual.carbs - target.carbs, unit: "g" },
-    { label: "Fat", delta: actual.fat - target.fat, unit: "g" },
-    { label: "Fiber", delta: totalFiber - FIBER_RDV, unit: "g" },
-  ];
-
-  doc.setFontSize(9);
-  const colW = CONTENT_WIDTH / 2;
-  macroGaps.forEach((g, i) => {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const xPos = MARGIN + col * colW;
-    const yPos = y + row * 7;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(107, 114, 128);
-    doc.text(g.label, xPos, yPos + 4);
-    const s = g.delta >= 0 ? "+" : "";
-    if (g.delta >= 0) {
-      doc.setTextColor(16, 185, 129);
-    } else {
-      doc.setTextColor(239, 68, 68);
-    }
-    doc.setFont("helvetica", "bold");
-    doc.text(`${s}${Math.round(g.delta)}${g.unit}`, xPos + colW - 5, yPos + 4, {
-      align: "right",
-    });
-  });
-  y += Math.ceil(macroGaps.length / 2) * 7 + 5;
-
-  // --- 6. Nutrition Facts (FDA-style) ---
-  ensureSpace(60);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text("Nutrition Facts", MARGIN, y + 5);
-  y += 8;
-
-  // Black top bar
-  doc.setFillColor(0, 0, 0);
-  doc.rect(MARGIN, y, CONTENT_WIDTH, 2, "F");
-  y += 4;
-
-  const totalSugar = plan.items.reduce((s, i) => s + (i.meal.sugar ?? 0), 0);
-  const fdaRows = [
-    { label: "Total Fat", value: `${Math.round(actual.fat)}g`, dv: Math.round((actual.fat / target.fat) * 100), bold: true },
-    { label: "Total Carbohydrate", value: `${Math.round(actual.carbs)}g`, dv: Math.round((actual.carbs / target.carbs) * 100), bold: true },
-    { label: "  Dietary Fiber", value: `${Math.round(totalFiber)}g`, dv: Math.round((totalFiber / FIBER_RDV) * 100), bold: false },
-    { label: "  Total Sugars", value: `${Math.round(totalSugar)}g`, dv: Math.round((totalSugar / SUGAR_RDV) * 100), bold: false },
-    { label: "Protein", value: `${Math.round(actual.protein)}g`, dv: Math.round((actual.protein / target.protein) * 100), bold: true },
-  ];
-
-  // Calories row
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0, 0, 0);
-  doc.text("Calories", MARGIN + 2, y + 4);
-  doc.setFontSize(14);
-  doc.text(`${Math.round(actual.calories)}`, MARGIN + CONTENT_WIDTH - 2, y + 4, { align: "right" });
   y += 7;
 
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-  y += 1;
-
-  // %DV header
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("% Daily Value*", MARGIN + CONTENT_WIDTH - 2, y + 3, { align: "right" });
-  y += 5;
-
-  for (const row of fdaRows) {
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.1);
-    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-
-    doc.setFontSize(8);
-    doc.setFont("helvetica", row.bold ? "bold" : "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.text(`${row.label} ${row.value}`, MARGIN + 2, y + 3.5);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${row.dv}%`, MARGIN + CONTENT_WIDTH - 2, y + 3.5, { align: "right" });
-    y += 5;
-  }
-
-  // Bottom rule
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
-  y += 3;
-
-  doc.setFontSize(6);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(
-    `* Percent Daily Values are based on a ${Math.round(target.calories)} calorie diet.`,
-    MARGIN + 2,
-    y + 2,
-  );
-  y += 8;
-
-  // --- 7. Calorie contribution bar ---
-  ensureSpace(20);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text("Calorie Contribution", MARGIN, y + 5);
-  y += 9;
-
+  // --- Calorie contribution bar ---
+  ensureSpace(15);
   const totalCal = actual.calories || 1;
   let barX = MARGIN;
   for (const item of plan.items) {
@@ -326,36 +179,115 @@ export async function generatePlanPdf({
     const w = pct * CONTENT_WIDTH;
     const color = SLOT_COLORS[item.slot] ?? SLOT_COLORS.snack;
     doc.setFillColor(color[0], color[1], color[2]);
-    doc.rect(barX, y, w, 5, "F");
+    doc.rect(barX, y, w, 4, "F");
     barX += w;
   }
-  y += 8;
+  y += 6;
 
   // Legend
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   let legendX = MARGIN;
   for (const item of plan.items) {
     const color = SLOT_COLORS[item.slot] ?? SLOT_COLORS.snack;
     const pct = Math.round((item.meal.calories / totalCal) * 100);
     doc.setFillColor(color[0], color[1], color[2]);
-    doc.rect(legendX, y, 3, 3, "F");
+    doc.rect(legendX, y, 2.5, 2.5, "F");
     doc.setTextColor(107, 114, 128);
     doc.setFont("helvetica", "normal");
     const label = `${SLOT_LABELS[item.slot] ?? item.slot} ${pct}%`;
-    doc.text(label, legendX + 4, y + 2.5);
-    legendX += doc.getTextWidth(label) + 8;
+    doc.text(label, legendX + 3.5, y + 2);
+    legendX += doc.getTextWidth(label) + 7;
   }
+  y += 6;
+
+  // --- Price for this day ---
+  const dayPrice =
+    plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
+    plan.total_extra_price;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text(`Day Total: ฿${dayPrice.toFixed(0)}`, PAGE_WIDTH - MARGIN, y + 3, { align: "right" });
   y += 8;
 
-  // --- 8. Allergens ---
-  const allergenMap = new Map<string, string[]>();
-  for (const item of plan.items) {
-    for (const a of item.meal.allergens) {
-      const existing = allergenMap.get(a) ?? [];
-      if (!existing.includes(item.slot)) {
-        existing.push(item.slot);
+  return y;
+}
+
+/** Render the overall summary section for a multi-day plan. */
+function renderMultiDaySummary(
+  doc: jsPDF,
+  multiDayPlan: MultiDayPlan,
+  y: number,
+): number {
+  function ensureSpace(needed: number) {
+    if (y + needed > PAGE_HEIGHT - MARGIN) {
+      doc.addPage();
+      y = MARGIN;
+    }
+  }
+
+  // --- Summary stats ---
+  ensureSpace(30);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Plan Summary", MARGIN, y + 5);
+  y += 10;
+
+  const avgScore =
+    multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
+    multiDayPlan.plans.length;
+  const avgCal =
+    multiDayPlan.plans.reduce((s, p) => s + p.actual_macros.calories, 0) /
+    multiDayPlan.plans.length;
+  const avgProtein =
+    multiDayPlan.plans.reduce((s, p) => s + p.actual_macros.protein, 0) /
+    multiDayPlan.plans.length;
+  const avgCarbs =
+    multiDayPlan.plans.reduce((s, p) => s + p.actual_macros.carbs, 0) /
+    multiDayPlan.plans.length;
+  const avgFat =
+    multiDayPlan.plans.reduce((s, p) => s + p.actual_macros.fat, 0) /
+    multiDayPlan.plans.length;
+  const target = multiDayPlan.plans[0].target_macros;
+
+  // Summary table
+  const summaryHead = ["Metric", "Average / Day", "Target"];
+  const summaryBody = [
+    ["Match Score", `${Math.round(avgScore * 100)}%`, "100%"],
+    ["Calories", `${Math.round(avgCal)} kcal`, `${Math.round(target.calories)} kcal`],
+    ["Protein", `${Math.round(avgProtein)}g`, `${Math.round(target.protein)}g`],
+    ["Carbs", `${Math.round(avgCarbs)}g`, `${Math.round(target.carbs)}g`],
+    ["Fat", `${Math.round(avgFat)}g`, `${Math.round(target.fat)}g`],
+    ["Unique Meals", `${multiDayPlan.total_unique_meals}`, ""],
+    ["Repeated Meals", `${multiDayPlan.total_repeated_meals}`, ""],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [summaryHead],
+    body: summaryBody,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: {
+      fillColor: [16, 185, 129],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    bodyStyles: { textColor: [55, 65, 81] },
+    theme: "grid",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // --- Combined allergens across all days ---
+  const allergenMap = new Map<string, Set<string>>();
+  for (const dayPlan of multiDayPlan.plans) {
+    for (const item of dayPlan.items) {
+      for (const a of item.meal.allergens) {
+        if (!allergenMap.has(a)) allergenMap.set(a, new Set());
+        allergenMap.get(a)!.add(item.meal_name);
       }
-      allergenMap.set(a, existing);
     }
   }
 
@@ -369,14 +301,11 @@ export async function generatePlanPdf({
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(239, 68, 68); // red
-    for (const [allergen, slots] of allergenMap) {
+    doc.setTextColor(239, 68, 68);
+    for (const [allergen, meals] of allergenMap) {
       ensureSpace(6);
-      const slotNames = slots
-        .map((s) => SLOT_LABELS[s] ?? (s.charAt(0).toUpperCase() + s.slice(1)))
-        .join(", ");
       doc.text(
-        `${formatTag(allergen)} (${slotNames})`,
+        `${formatTag(allergen)} — ${[...meals].join(", ")}`,
         MARGIN + 2,
         y + 3,
       );
@@ -385,9 +314,13 @@ export async function generatePlanPdf({
     y += 3;
   }
 
-  // --- 9. Dietary tags ---
+  // --- Combined dietary tags ---
   const dietaryTags = [
-    ...new Set(plan.items.flatMap((item) => item.meal.dietary_tags)),
+    ...new Set(
+      multiDayPlan.plans.flatMap((p) =>
+        p.items.flatMap((item) => item.meal.dietary_tags),
+      ),
+    ),
   ];
 
   if (dietaryTags.length > 0) {
@@ -405,7 +338,7 @@ export async function generatePlanPdf({
     y += 8;
   }
 
-  // --- 10. Total price ---
+  // --- Total price ---
   ensureSpace(12);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
@@ -413,14 +346,250 @@ export async function generatePlanPdf({
   doc.text("Total Price", MARGIN, y + 5);
   y += 9;
 
-  const totalPrice =
-    plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
-    plan.total_extra_price;
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(17, 24, 39);
-  doc.text(`฿${totalPrice.toFixed(0)}`, MARGIN + 2, y + 5);
+  doc.text(`฿${multiDayPlan.total_price.toFixed(0)}`, MARGIN + 2, y + 5);
+  y += 10;
+
+  return y;
+}
+
+export async function generatePlanPdf({
+  plan,
+  multiDayPlan,
+  radarChartDataUrl,
+}: GeneratePlanPdfOptions): Promise<void> {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const isMultiDay = multiDayPlan && multiDayPlan.plans.length > 1;
+
+  let y = MARGIN;
+
+  // --- Title page ---
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+
+  if (isMultiDay) {
+    doc.text(`${multiDayPlan.days}-Day Meal Plan`, MARGIN, y + 7);
+
+    // Date range
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    const firstDate = multiDayPlan.plans[0].date;
+    const lastDate = multiDayPlan.plans[multiDayPlan.plans.length - 1].date;
+    doc.text(`${firstDate} — ${lastDate}`, PAGE_WIDTH - MARGIN, y + 3, { align: "right" });
+
+    // Avg match score
+    const avgScore =
+      multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
+      multiDayPlan.plans.length;
+    doc.setTextColor(16, 185, 129);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `${Math.round(avgScore * 100)}% avg match`,
+      PAGE_WIDTH - MARGIN,
+      y + 8,
+      { align: "right" },
+    );
+    y += 15;
+
+    // Render summary first
+    y = renderMultiDaySummary(doc, multiDayPlan, y);
+
+    // Render each day on a new page
+    for (let i = 0; i < multiDayPlan.plans.length; i++) {
+      doc.addPage();
+      y = MARGIN;
+      const dayPlan = multiDayPlan.plans[i];
+      const dayLabel = `Day ${(dayPlan as DayPlan).day ?? i + 1}`;
+      y = renderDay(doc, dayPlan, y, dayLabel);
+    }
+  } else {
+    // Single day
+    doc.text("Daily Meal Plan", MARGIN, y + 7);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    doc.text(plan.date, PAGE_WIDTH - MARGIN, y + 3, { align: "right" });
+    doc.setTextColor(16, 185, 129);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `${Math.round(plan.total_score * 100)}% match`,
+      PAGE_WIDTH - MARGIN,
+      y + 8,
+      { align: "right" },
+    );
+    y += 15;
+
+    y = renderDay(doc, plan, y);
+
+    // --- Radar chart ---
+    if (radarChartDataUrl) {
+      if (y + 65 > PAGE_HEIGHT - MARGIN) {
+        doc.addPage();
+        y = MARGIN;
+      }
+      const chartWidth = 55;
+      const chartX = MARGIN + (CONTENT_WIDTH - chartWidth) / 2;
+      doc.addImage(radarChartDataUrl, "PNG", chartX, y, chartWidth, chartWidth);
+      y += chartWidth + 5;
+    }
+
+    // --- Nutrition Facts (FDA-style) for single day ---
+    const { actual_macros: actual, target_macros: target } = plan;
+    if (y + 60 > PAGE_HEIGHT - MARGIN) {
+      doc.addPage();
+      y = MARGIN;
+    }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text("Nutrition Facts", MARGIN, y + 5);
+    y += 8;
+
+    doc.setFillColor(0, 0, 0);
+    doc.rect(MARGIN, y, CONTENT_WIDTH, 2, "F");
+    y += 4;
+
+    const totalFiber = plan.items.reduce((s, i) => s + (i.meal.fiber ?? 0), 0);
+    const totalSugar = plan.items.reduce((s, i) => s + (i.meal.sugar ?? 0), 0);
+    const fdaRows = [
+      { label: "Total Fat", value: `${Math.round(actual.fat)}g`, dv: Math.round((actual.fat / target.fat) * 100), bold: true },
+      { label: "Total Carbohydrate", value: `${Math.round(actual.carbs)}g`, dv: Math.round((actual.carbs / target.carbs) * 100), bold: true },
+      { label: "  Dietary Fiber", value: `${Math.round(totalFiber)}g`, dv: Math.round((totalFiber / FIBER_RDV) * 100), bold: false },
+      { label: "  Total Sugars", value: `${Math.round(totalSugar)}g`, dv: Math.round((totalSugar / SUGAR_RDV) * 100), bold: false },
+      { label: "Protein", value: `${Math.round(actual.protein)}g`, dv: Math.round((actual.protein / target.protein) * 100), bold: true },
+    ];
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Calories", MARGIN + 2, y + 4);
+    doc.setFontSize(14);
+    doc.text(`${Math.round(actual.calories)}`, MARGIN + CONTENT_WIDTH - 2, y + 4, { align: "right" });
+    y += 7;
+
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+    y += 1;
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("% Daily Value*", MARGIN + CONTENT_WIDTH - 2, y + 3, { align: "right" });
+    y += 5;
+
+    for (const row of fdaRows) {
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.1);
+      doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", row.bold ? "bold" : "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text(`${row.label} ${row.value}`, MARGIN + 2, y + 3.5);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${row.dv}%`, MARGIN + CONTENT_WIDTH - 2, y + 3.5, { align: "right" });
+      y += 5;
+    }
+
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+    y += 3;
+
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    doc.text(
+      `* Percent Daily Values are based on a ${Math.round(target.calories)} calorie diet.`,
+      MARGIN + 2,
+      y + 2,
+    );
+    y += 8;
+
+    // --- Allergens ---
+    const allergenMap = new Map<string, string[]>();
+    for (const item of plan.items) {
+      for (const a of item.meal.allergens) {
+        const existing = allergenMap.get(a) ?? [];
+        if (!existing.includes(item.slot)) {
+          existing.push(item.slot);
+        }
+        allergenMap.set(a, existing);
+      }
+    }
+
+    if (allergenMap.size > 0) {
+      if (y + 15 > PAGE_HEIGHT - MARGIN) { doc.addPage(); y = MARGIN; }
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text("Allergens", MARGIN, y + 5);
+      y += 9;
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(239, 68, 68);
+      for (const [allergen, slots] of allergenMap) {
+        if (y + 6 > PAGE_HEIGHT - MARGIN) { doc.addPage(); y = MARGIN; }
+        const slotNames = slots
+          .map((s) => SLOT_LABELS[s] ?? (s.charAt(0).toUpperCase() + s.slice(1)))
+          .join(", ");
+        doc.text(
+          `${formatTag(allergen)} (${slotNames})`,
+          MARGIN + 2,
+          y + 3,
+        );
+        y += 5;
+      }
+      y += 3;
+    }
+
+    // --- Dietary tags ---
+    const dietaryTags = [
+      ...new Set(plan.items.flatMap((item) => item.meal.dietary_tags)),
+    ];
+
+    if (dietaryTags.length > 0) {
+      if (y + 12 > PAGE_HEIGHT - MARGIN) { doc.addPage(); y = MARGIN; }
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text("Dietary Tags", MARGIN, y + 5);
+      y += 9;
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(16, 185, 129);
+      doc.text(dietaryTags.map(formatTag).join(", "), MARGIN + 2, y + 3);
+      y += 8;
+    }
+
+    // --- Total price ---
+    if (y + 12 > PAGE_HEIGHT - MARGIN) { doc.addPage(); y = MARGIN; }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text("Total Price", MARGIN, y + 5);
+    y += 9;
+
+    const totalPrice =
+      plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
+      plan.total_extra_price;
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text(`฿${totalPrice.toFixed(0)}`, MARGIN + 2, y + 5);
+  }
 
   // Save
-  doc.save(`meal-plan-${plan.date}.pdf`);
+  const filename = isMultiDay
+    ? `meal-plan-${multiDayPlan.days}day-${multiDayPlan.plans[0].date}.pdf`
+    : `meal-plan-${plan.date}.pdf`;
+  doc.save(filename);
 }
