@@ -21,17 +21,17 @@ export function OrdersPage() {
 
   if (orders.length === 0) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 animate-fade-in">
         <div className="flex justify-center mb-4">
-          <PackageIcon className="w-16 h-16 text-gray-300" />
+          <PackageIcon className="w-16 h-16 text-stone-300" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="font-display text-xl text-stone-900 mb-2">
           No orders yet
         </h2>
-        <p className="text-gray-500 mb-6">Your order history will appear here</p>
+        <p className="text-stone-500 mb-6">Your order history will appear here</p>
         <Link
           to="/meals"
-          className="inline-block px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl"
+          className="inline-block px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl shadow-sm"
         >
           Browse Meals
         </Link>
@@ -40,25 +40,26 @@ export function OrdersPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-      {orders.map((order) => (
+    <div className="max-w-lg mx-auto space-y-4 animate-fade-in">
+      <h1 className="font-display text-xl text-stone-900">Orders</h1>
+      {orders.map((order, i) => (
         <Link
           key={order.id}
           to={`/orders/${order.id}`}
-          className="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+          className="block bg-white rounded-2xl p-4 shadow-card border border-stone-100 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 animate-slide-up"
+          style={{ animationDelay: `${i * 0.05}s` }}
         >
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-stone-500">
               {order.items.length} item{order.items.length !== 1 ? "s" : ""}
             </span>
             <StatusBadge status={order.status} />
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400 truncate max-w-[60%]">
+            <span className="text-xs text-stone-400 truncate max-w-[60%]">
               {order.items.map((i) => i.meal_name).join(", ")}
             </span>
-            <span className="font-bold text-gray-900">
+            <span className="font-bold text-stone-900">
               ฿{order.total.toFixed(0)}
             </span>
           </div>

@@ -1,6 +1,221 @@
 @import "tailwindcss";
 
+/* ── Design Tokens ─────────────────────────────────────── */
+:root {
+  /* Typography */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+
+  /* Brand palette */
+  --color-primary: #059669;
+  --color-primary-light: #d1fae5;
+  --color-primary-dark: #064e3b;
+  --color-accent: #f59e0b;
+  --color-surface: #fafaf9;
+  --color-surface-elevated: #ffffff;
+
+  /* Macro colors */
+  --color-protein: #2563eb;
+  --color-carbs: #d97706;
+  --color-fat: #e11d48;
+  --color-calories: #111827;
+
+  /* Depth */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 20px 40px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.15);
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-pill: 999px;
+  --radius-btn: 12px;
+}
+
+/* ── Base Typography ───────────────────────────────────── */
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-surface);
+  color: #1f2937;
+}
+
+/* ── Keyframe Animations ───────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progress-stripe {
+  0% { background-position: 1rem 0; }
+  100% { background-position: 0 0; }
+}
+
+/* ── Tailwind v4 Utilities ─────────────────────────────── */
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-body {
+  font-family: var(--font-body);
+}
+
 @utility font-fda-title {
   font-family: 'Helvetica Neue', 'Arial Black', Arial, sans-serif;
   font-weight: 900;
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+@utility animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.4s ease-out both;
+}
+
+@utility animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+
+@utility animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@utility animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@utility animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
+@utility animate-progress-stripe {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255,255,255,0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 1rem 1rem;
+  animation: progress-stripe 0.5s linear infinite;
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-card-hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility card-base {
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+@utility card-interactive {
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  &:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+}
+
+@utility grain-overlay {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+}
+
+/* ── Stagger Animation Delays ──────────────────────────── */
+@utility delay-1 { animation-delay: 0.05s; }
+@utility delay-2 { animation-delay: 0.1s; }
+@utility delay-3 { animation-delay: 0.15s; }
+@utility delay-4 { animation-delay: 0.2s; }
+@utility delay-5 { animation-delay: 0.25s; }
+@utility delay-6 { animation-delay: 0.3s; }
+
+/* ── Scrollbar Styling ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ── Selection Color ───────────────────────────────────── */
+::selection {
+  background: rgba(5, 150, 105, 0.2);
+  color: #064e3b;
 }

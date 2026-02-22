@@ -27,12 +27,12 @@ function CartItemRow({
   ].filter(Boolean);
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+    <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 flex items-center gap-4">
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 text-sm truncate">
+        <h3 className="font-medium text-stone-900 text-sm truncate">
           {meal.name}
         </h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-stone-500">
           {Math.round(meal.calories)} cal · ฿{Math.round(unitPrice)}
         </p>
         {hasExtras && (
@@ -45,22 +45,22 @@ function CartItemRow({
       <div className="flex items-center gap-2">
         <button
           onClick={() => onUpdateQuantity(item.id, quantity - 1)}
-          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 hover:bg-stone-200 transition-colors"
         >
           -
         </button>
-        <span className="w-6 text-center font-medium text-sm">
+        <span className="w-6 text-center font-semibold text-sm">
           {quantity}
         </span>
         <button
           onClick={() => onUpdateQuantity(item.id, quantity + 1)}
-          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+          className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 hover:bg-stone-200 transition-colors"
         >
           +
         </button>
         <button
           onClick={() => onRemove(item.id)}
-          className="ml-2 text-red-400 hover:text-red-600"
+          className="ml-2 text-red-400 hover:text-red-600 transition-colors"
         >
           <CloseIcon className="w-4 h-4" />
         </button>
@@ -107,17 +107,17 @@ export function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 animate-fade-in">
         <div className="flex justify-center mb-4">
-          <CartIcon className="w-16 h-16 text-gray-300" />
+          <CartIcon className="w-16 h-16 text-stone-300" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="font-display text-xl text-stone-900 mb-2">
           Your cart is empty
         </h2>
-        <p className="text-gray-500 mb-6">Add some meals to get started</p>
+        <p className="text-stone-500 mb-6">Add some meals to get started</p>
         <Link
           to="/meals"
-          className="inline-block px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors"
+          className="inline-block px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
         >
           Browse Meals
         </Link>
@@ -133,12 +133,12 @@ export function CartPage() {
   const looseItems = items.filter((i) => !i.planId);
 
   return (
-    <div className="max-w-lg mx-auto space-y-4">
+    <div className="max-w-lg mx-auto space-y-4 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">Cart</h1>
+        <h1 className="font-display text-xl text-stone-900">Cart</h1>
         <button
           onClick={clearCart}
-          className="text-sm text-red-500 font-medium"
+          className="text-sm text-red-500 font-medium hover:text-red-600 transition-colors"
         >
           Clear all
         </button>
@@ -174,7 +174,7 @@ export function CartPage() {
       {looseItems.length > 0 && (
         <div className="space-y-3">
           {planGroups.length > 0 && (
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide">
               Individual items
             </h2>
           )}
@@ -191,16 +191,16 @@ export function CartPage() {
       )}
 
       {/* Total + Checkout */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-gray-600">Total</span>
-          <span className="text-xl font-bold text-gray-900">
+          <span className="text-stone-600">Total</span>
+          <span className="text-xl font-bold text-stone-900">
             ฿{total().toFixed(0)}
           </span>
         </div>
         <Link
           to="/checkout"
-          className="block w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl text-center hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
+          className="block w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl text-center hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm"
         >
           Proceed to Checkout
         </Link>

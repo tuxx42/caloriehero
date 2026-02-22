@@ -255,7 +255,9 @@ describe("PlanGeneratorPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Meals")).toBeInTheDocument();
     });
-    expect(screen.getByText("Nutrition")).toBeInTheDocument();
+    // Multiple "Nutrition" buttons exist (tab bar + per-slot toggles)
+    const nutritionButtons = screen.getAllByText("Nutrition");
+    expect(nutritionButtons.length).toBeGreaterThanOrEqual(1);
   });
 
   it("switches to inline nutrition datasheet on Nutrition tab", async () => {
@@ -267,7 +269,10 @@ describe("PlanGeneratorPage", () => {
       expect(screen.getByText("Pancakes")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Nutrition"));
+    // Click the tab bar Nutrition button (first one found in the tab bar)
+    const nutritionButtons = screen.getAllByText("Nutrition");
+    // The tab bar button is the first one
+    fireEvent.click(nutritionButtons[0]);
     await waitFor(() => {
       expect(screen.getByText("Macro Split")).toBeInTheDocument();
     });

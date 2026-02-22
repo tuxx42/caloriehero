@@ -8,6 +8,7 @@ import {
 import type { DailyPlan, MultiDayPlan, PlanItem } from "../api/types";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { MacroBar } from "../components/common/MacroBar";
+import { NutritionLabel } from "../components/common/NutritionLabel";
 import { DayTabBar } from "../components/meals/DayTabBar";
 import { MealDatasheet } from "../components/meals/MealDatasheet";
 import { PlanDatasheet } from "../components/meals/PlanDatasheet";
@@ -15,11 +16,195 @@ import { SlotSwapModal } from "../components/meals/SlotSwapModal";
 import { useCartStore, type PlanContext } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
-import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon } from "../components/icons/Icons";
+import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon, FlameIcon, ProteinIcon, GrainIcon, DropletIcon } from "../components/icons/Icons";
 
 function formatExtra(value: number, label: string): string | null {
   if (value === 0) return null;
   return `${value > 0 ? "+" : ""}${value}g ${label}`;
+}
+
+/** Per-slot card with optional inline nutrition tab */
+function SlotCard({
+  item,
+  isRepeated,
+  onDetail,
+  onSwap,
+  swapping,
+}: {
+  item: PlanItem;
+  isRepeated: boolean;
+  onDetail: () => void;
+  onSwap: () => void;
+  swapping: boolean;
+}) {
+  const [showNutrition, setShowNutrition] = useState(false);
+
+  const extras = [
+    formatExtra(item.extra_protein, "P"),
+    formatExtra(item.extra_carbs, "C"),
+    formatExtra(item.extra_fat, "F"),
+  ].filter(Boolean);
+
+  const SlotIconComp = SLOT_ICONS[item.slot] ?? SunriseIcon;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-card border border-stone-100 overflow-hidden transition-all duration-200">
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+            <SlotIconComp className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-stone-900 capitalize text-sm">
+                  {item.slot}
+                </h3>
+                {isRepeated && (
+                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-medium rounded">
+                    Repeated
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-emerald-600 font-semibold">
+                  {Math.round(item.score * 100)}%
+                </span>
+                <button
+                  onClick={onDetail}
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <InfoIcon className="w-3 h-3" />
+                  Details
+                </button>
+                <button
+                  onClick={onSwap}
+                  disabled={swapping}
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 disabled:opacity-50 transition-colors"
+                >
+                  <SwapIcon className="w-3 h-3" />
+                  Swap
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-stone-700 font-medium">{item.meal_name}</p>
+            {extras.length > 0 && (
+              <p className="text-xs text-indigo-600 mt-0.5">{extras.join(", ")}</p>
+            )}
+            {item.extra_price > 0 && (
+              <p className="text-xs text-stone-500 mt-0.5">
+                Extra: ฿{item.extra_price.toFixed(0)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Compact macro row */}
+        <div className="grid grid-cols-4 gap-1 text-center text-xs">
+          <div>
+            <div className="font-semibold">{Math.round(item.slot_targets.calories)}</div>
+            <div className="text-stone-400">cal</div>
+          </div>
+          <div>
+            <div className="font-semibold text-blue-600">{Math.round(item.slot_targets.protein)}g</div>
+            <div className="text-stone-400">pro</div>
+          </div>
+          <div>
+            <div className="font-semibold text-amber-600">{Math.round(item.slot_targets.carbs)}g</div>
+            <div className="text-stone-400">carb</div>
+          </div>
+          <div>
+            <div className="font-semibold text-rose-600">{Math.round(item.slot_targets.fat)}g</div>
+            <div className="text-stone-400">fat</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nutrition toggle */}
+      <div className="border-t border-stone-100">
+        <button
+          onClick={() => setShowNutrition(!showNutrition)}
+          className="w-full px-4 py-2 flex items-center justify-center gap-1.5 text-xs font-medium text-stone-500 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors"
+        >
+          <FlameIcon className="w-3.5 h-3.5" />
+          {showNutrition ? "Hide Nutrition" : "Nutrition"}
+          <svg className={`w-3 h-3 transition-transform duration-200 ${showNutrition ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Inline nutrition panel */}
+      {showNutrition && item.meal && (
+        <div className="border-t border-stone-100 px-4 py-4 bg-stone-50/50 animate-slide-up space-y-4">
+          {/* Macro detail bars */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-stone-700">
+              <ProteinIcon className="w-3.5 h-3.5 text-blue-500" />
+              <span className="font-medium w-10">Protein</span>
+              <div className="flex-1 h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${Math.min((item.meal.protein / item.slot_targets.protein) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="font-semibold text-blue-600 w-10 text-right">{Math.round(item.meal.protein)}g</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-stone-700">
+              <GrainIcon className="w-3.5 h-3.5 text-amber-500" />
+              <span className="font-medium w-10">Carbs</span>
+              <div className="flex-1 h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full"
+                  style={{ width: `${Math.min((item.meal.carbs / item.slot_targets.carbs) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="font-semibold text-amber-600 w-10 text-right">{Math.round(item.meal.carbs)}g</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-stone-700">
+              <DropletIcon className="w-3.5 h-3.5 text-rose-500" />
+              <span className="font-medium w-10">Fat</span>
+              <div className="flex-1 h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-rose-500 rounded-full"
+                  style={{ width: `${Math.min((item.meal.fat / item.slot_targets.fat) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="font-semibold text-rose-600 w-10 text-right">{Math.round(item.meal.fat)}g</span>
+            </div>
+          </div>
+
+          {/* FDA Nutrition Label */}
+          <NutritionLabel
+            calories={item.meal.calories}
+            protein={item.meal.protein}
+            carbs={item.meal.carbs}
+            fat={item.meal.fat}
+            fiber={item.meal.fiber ?? undefined}
+            sugar={item.meal.sugar ?? undefined}
+            servingSize={item.meal.serving_size}
+            targets={item.slot_targets}
+          />
+
+          {/* Extra info */}
+          {(item.meal.allergens.length > 0 || item.meal.dietary_tags.length > 0) && (
+            <div className="flex flex-wrap gap-1.5">
+              {item.meal.allergens.map((a) => (
+                <span key={a} className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-medium rounded-full">
+                  {a.charAt(0).toUpperCase() + a.slice(1)}
+                </span>
+              ))}
+              {item.meal.dietary_tags.map((t) => (
+                <span key={t} className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-medium rounded-full">
+                  {t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PlanGeneratorPage() {
@@ -189,33 +374,33 @@ export function PlanGeneratorPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div className="text-center">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">
+      <div className="text-center animate-fade-in">
+        <h1 className="font-display text-2xl text-stone-900 mb-1">
           {mode === "single" ? "Daily Meal Plan" : `${numDays}-Day Meal Plan`}
         </h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-stone-500">
           AI-matched meals to hit your macro targets
         </p>
       </div>
 
       {/* Mode toggle */}
-      <div className="flex bg-gray-100 rounded-xl p-1">
+      <div className="flex bg-stone-100 rounded-xl p-1">
         <button
           onClick={() => setMode("single")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
             mode === "single"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-700"
           }`}
         >
           1 Day
         </button>
         <button
           onClick={() => setMode("multi")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
             mode === "multi"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-700"
           }`}
         >
           Multi-Day
@@ -225,7 +410,7 @@ export function PlanGeneratorPage() {
       {/* Day count selector (multi mode) */}
       {mode === "multi" && (
         <div className="flex items-center gap-3">
-          <label htmlFor="num-days" className="text-sm text-gray-600">
+          <label htmlFor="num-days" className="text-sm text-stone-600">
             Number of days:
           </label>
           <input
@@ -235,7 +420,7 @@ export function PlanGeneratorPage() {
             max={30}
             value={numDays}
             onChange={(e) => setNumDays(Math.min(30, Math.max(4, Number(e.target.value))))}
-            className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-20 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
       )}
@@ -243,7 +428,7 @@ export function PlanGeneratorPage() {
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-50 transition-colors"
+        className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-all duration-200 shadow-sm"
       >
         {loading
           ? "Generating..."
@@ -255,7 +440,7 @@ export function PlanGeneratorPage() {
       {loading && <LoadingSpinner />}
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm">
+        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm border border-red-100">
           {error}
         </div>
       )}
@@ -263,16 +448,16 @@ export function PlanGeneratorPage() {
       {/* Multi-day summary + repeat warning */}
       {mode === "multi" && multiDayPlan && !loading && (
         <>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-slide-up">
             <div className="flex justify-between items-center">
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-stone-900">
                 {multiDayPlan.days}-Day Plan
               </h2>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-stone-500">
                 {multiDayPlan.total_unique_meals} unique meals
               </span>
             </div>
-            <div className="text-xs text-gray-400 mt-1">
+            <div className="text-xs text-stone-400 mt-1">
               Avg {Math.round(
                 multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
                   multiDayPlan.plans.length * 100
@@ -281,7 +466,7 @@ export function PlanGeneratorPage() {
           </div>
 
           {multiDayPlan.has_repeats && (
-            <div className="bg-amber-50 text-amber-700 px-4 py-3 rounded-xl text-sm">
+            <div className="bg-amber-50 text-amber-700 px-4 py-3 rounded-xl text-sm border border-amber-100">
               Some meals are repeated across days due to limited menu variety.
               Days with repeats are marked with an amber dot.
             </div>
@@ -298,35 +483,35 @@ export function PlanGeneratorPage() {
       {activePlan && !loading && (
         <>
           {/* Score header */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-fade-in">
             <div className="flex justify-between items-center">
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-stone-900">
                 {mode === "multi" ? `Day ${activeDay} Overview` : "Daily Overview"}
               </h2>
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-sm font-bold rounded-full">
                 {Math.round(activePlan.total_score * 100)}% match
               </span>
             </div>
           </div>
 
           {/* Meals / Nutrition tab bar */}
-          <div className="flex bg-gray-100 rounded-xl p-1">
+          <div className="flex bg-stone-100 rounded-xl p-1">
             <button
               onClick={() => setViewTab("meals")}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 viewTab === "meals"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700"
               }`}
             >
               Meals
             </button>
             <button
               onClick={() => setViewTab("nutrition")}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 viewTab === "nutrition"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700"
               }`}
             >
               Nutrition
@@ -336,7 +521,7 @@ export function PlanGeneratorPage() {
           {viewTab === "meals" && (
             <>
               {/* Macro bars */}
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
+              <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 space-y-3 animate-slide-up">
                 <MacroBar
                   label="Calories"
                   value={activePlan.actual_macros.calories}
@@ -363,109 +548,24 @@ export function PlanGeneratorPage() {
                 />
               </div>
 
-              {/* Slot cards */}
+              {/* Slot cards with inline nutrition */}
               <div className="space-y-3">
-                {activePlan.items.map((item) => {
-                  const extras = [
-                    formatExtra(item.extra_protein, "P"),
-                    formatExtra(item.extra_carbs, "C"),
-                    formatExtra(item.extra_fat, "F"),
-                  ].filter(Boolean);
-
-                  const isRepeated = activeDayRepeatedIds.has(item.meal_id);
-
-                  return (
-                    <div
-                      key={item.slot}
-                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        {(() => {
-                          const SlotIconComp = SLOT_ICONS[item.slot] ?? SunriseIcon;
-                          return <SlotIconComp className="w-6 h-6 text-gray-500" />;
-                        })()}
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-gray-900 capitalize text-sm">
-                                {item.slot}
-                              </h3>
-                              {isRepeated && (
-                                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-medium rounded">
-                                  Repeated
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-emerald-600 font-medium">
-                                {Math.round(item.score * 100)}%
-                              </span>
-                              <button
-                                onClick={() => setDetailItem(item)}
-                                className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                              >
-                                <InfoIcon className="w-3 h-3" />
-                                Info
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setSwapSlot({
-                                    slot: item.slot,
-                                    currentMealId: item.meal_id,
-                                  })
-                                }
-                                disabled={swapping}
-                                className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
-                              >
-                                <SwapIcon className="w-3 h-3" />
-                                Swap
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            {item.meal_name}
-                          </p>
-                          {extras.length > 0 && (
-                            <p className="text-xs text-indigo-600 mt-0.5">
-                              {extras.join(", ")}
-                            </p>
-                          )}
-                          {item.extra_price > 0 && (
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              Extra: ฿{item.extra_price.toFixed(0)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-1 text-center text-xs">
-                        <div>
-                          <div className="font-semibold">
-                            {Math.round(item.slot_targets.calories)}
-                          </div>
-                          <div className="text-gray-400">cal</div>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-blue-600">
-                            {Math.round(item.slot_targets.protein)}g
-                          </div>
-                          <div className="text-gray-400">pro</div>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-amber-600">
-                            {Math.round(item.slot_targets.carbs)}g
-                          </div>
-                          <div className="text-gray-400">carb</div>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-rose-600">
-                            {Math.round(item.slot_targets.fat)}g
-                          </div>
-                          <div className="text-gray-400">fat</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {activePlan.items.map((item, i) => (
+                  <div key={item.slot} className="animate-slide-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                    <SlotCard
+                      item={item}
+                      isRepeated={activeDayRepeatedIds.has(item.meal_id)}
+                      onDetail={() => setDetailItem(item)}
+                      onSwap={() =>
+                        setSwapSlot({
+                          slot: item.slot,
+                          currentMealId: item.meal_id,
+                        })
+                      }
+                      swapping={swapping}
+                    />
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -481,16 +581,16 @@ export function PlanGeneratorPage() {
           )}
 
           {/* Add Plan to Cart */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-slide-up">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-600">Total plan price</span>
-              <span className="text-xl font-bold text-gray-900">
+              <span className="text-stone-600">Total plan price</span>
+              <span className="text-xl font-bold text-stone-900">
                 ฿{planTotalPrice.toFixed(0)}
               </span>
             </div>
             <button
               onClick={handleAddPlanToCart}
-              className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
+              className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 shadow-sm"
             >
               {mode === "multi" ? "Add All Days to Cart" : "Add Plan to Cart"}
             </button>

@@ -16,57 +16,57 @@ export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCar
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+      className="group bg-white rounded-2xl shadow-card overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1 border border-stone-100"
       onClick={() => onSelect?.(meal)}
     >
-      {imageSrc ? (
-        <img
-          src={imageSrc}
-          alt={meal.name}
-          className="w-full h-40 object-cover"
-        />
-      ) : (
-        <div className="w-full h-40 bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
-          <SlotIconComp className="w-12 h-12 text-emerald-300" />
-        </div>
-      )}
+      <div className="relative overflow-hidden">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={meal.name}
+            className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-40 bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
+            <SlotIconComp className="w-12 h-12 text-emerald-300" />
+          </div>
+        )}
+        {score !== undefined && (
+          <span className="absolute top-2.5 right-2.5 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-bold rounded-full shadow-sm">
+            {Math.round(score * 100)}%
+          </span>
+        )}
+      </div>
       <div className="p-4">
-        <div className="flex justify-between items-start mb-1">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-            {meal.name}
-          </h3>
-          {score !== undefined && (
-            <span className="ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full shrink-0">
-              {Math.round(score * 100)}%
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+        <h3 className="font-semibold text-stone-900 text-sm leading-tight mb-1">
+          {meal.name}
+        </h3>
+        <p className="text-xs text-stone-500 mb-3 line-clamp-2">
           {meal.description}
         </p>
         <div className="grid grid-cols-4 gap-1 text-center text-xs mb-3">
           <div>
             <div className="flex items-center justify-center gap-0.5">
-              <FlameIcon className="w-3 h-3 text-gray-400" />
-              <span className="font-semibold text-gray-900">{Math.round(meal.calories)}</span>
+              <FlameIcon className="w-3 h-3 text-stone-400" />
+              <span className="font-semibold text-stone-900">{Math.round(meal.calories)}</span>
             </div>
-            <div className="text-gray-400">cal</div>
+            <div className="text-stone-400">cal</div>
           </div>
           <div>
             <div className="font-semibold text-blue-600">{Math.round(meal.protein)}g</div>
-            <div className="text-gray-400">pro</div>
+            <div className="text-stone-400">pro</div>
           </div>
           <div>
             <div className="font-semibold text-amber-600">{Math.round(meal.carbs)}g</div>
-            <div className="text-gray-400">carb</div>
+            <div className="text-stone-400">carb</div>
           </div>
           <div>
             <div className="font-semibold text-rose-600">{Math.round(meal.fat)}g</div>
-            <div className="text-gray-400">fat</div>
+            <div className="text-stone-400">fat</div>
           </div>
         </div>
         <div className="flex justify-between items-center">
-          <span className="font-bold text-gray-900">฿{meal.price}</span>
+          <span className="font-bold text-stone-900">฿{meal.price}</span>
           <div className="flex items-center gap-1.5">
             {onInfo && (
               <button
@@ -86,7 +86,7 @@ export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCar
                   e.stopPropagation();
                   onAddToCart(meal);
                 }}
-                className="px-3 py-1.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
+                className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm"
               >
                 Add
               </button>

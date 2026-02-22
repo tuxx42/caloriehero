@@ -49,19 +49,19 @@ export function MealsPage() {
   }, [category]);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Menu</h1>
+    <div className="space-y-5 animate-fade-in">
+      <h1 className="font-display text-2xl text-stone-900">Menu</h1>
 
       {/* Category filters */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.value}
             onClick={() => setCategory(cat.value)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
               category === cat.value
-                ? "bg-emerald-500 text-white"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300"
             }`}
           >
             {cat.Icon && <cat.Icon className="w-4 h-4" />}
@@ -74,17 +74,18 @@ export function MealsPage() {
       {loading ? (
         <LoadingSpinner />
       ) : meals.length === 0 ? (
-        <p className="text-center text-gray-500 py-8">No meals found</p>
+        <p className="text-center text-stone-500 py-8">No meals found</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {meals.map((meal) => (
-            <MealCard
-              key={meal.id}
-              meal={meal}
-              onAddToCart={() => setSelectedMeal(meal)}
-              onSelect={() => setSelectedMeal(meal)}
-              onInfo={() => setInfoMeal(meal)}
-            />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          {meals.map((meal, i) => (
+            <div key={meal.id} className="animate-slide-up" style={{ animationDelay: `${i * 0.04}s` }}>
+              <MealCard
+                meal={meal}
+                onAddToCart={() => setSelectedMeal(meal)}
+                onSelect={() => setSelectedMeal(meal)}
+                onInfo={() => setInfoMeal(meal)}
+              />
+            </div>
           ))}
         </div>
       )}
