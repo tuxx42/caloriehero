@@ -85,6 +85,11 @@ export function OnboardingPage() {
         fitness_goal: goal,
         allergies,
         dietary_preferences: dietaryPrefs,
+        weight_kg: weight,
+        height_cm: height,
+        age,
+        gender,
+        activity_level: activityLevel,
       });
       navigate("/", { replace: true });
     } catch (err) {

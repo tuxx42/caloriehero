@@ -1,9 +1,41 @@
 import { Link } from "react-router";
+import { PlanSummaryBadge } from "../components/cart/PlanSummaryBadge";
+import { WeightProjectionCard } from "../components/common/WeightProjectionCard";
 import { useCartStore } from "../stores/cart";
+import { useProfileStore } from "../stores/profile";
+import type { BodyStats } from "../utils/tdee";
+import { calculateWeightProjection } from "../utils/weightProjection";
 
 export function CartPage() {
-  const { items, updateQuantity, removeItem, total, clearCart, itemPrice } =
+  const { items, updateQuantity, removeItem, total, clearCart, itemPrice, planContext } =
     useCartStore();
+  const profile = useProfileStore((s) => s.profile);
+
+  // Derive body stats and weight projection from plan context + profile
+  const bodyStats: BodyStats | undefined =
+    profile?.weight_kg != null &&
+    profile?.height_cm != null &&
+    profile?.age != null &&
+    profile?.gender != null &&
+    profile?.activity_level != null
+      ? {
+          weight: profile.weight_kg,
+          height: profile.height_cm,
+          age: profile.age,
+          gender: profile.gender as BodyStats["gender"],
+          activityLevel: profile.activity_level as BodyStats["activityLevel"],
+        }
+      : undefined;
+
+  const weightProjection =
+    planContext && bodyStats
+      ? calculateWeightProjection(
+          bodyStats,
+          planContext.dailySummaries.reduce((s, d) => s + d.actual_macros.calories, 0) /
+            planContext.dailySummaries.length,
+          planContext.numDays,
+        )
+      : null;
 
   if (items.length === 0) {
     return (
@@ -34,6 +66,15 @@ export function CartPage() {
           Clear all
         </button>
       </div>
+
+      {planContext && <PlanSummaryBadge planContext={planContext} />}
+
+      {weightProjection && bodyStats && (
+        <WeightProjectionCard
+          projection={weightProjection}
+          currentWeight={bodyStats.weight}
+        />
+      )}
 
       <div className="space-y-3">
         {items.map((item) => {

@@ -12,7 +12,9 @@ import { DayTabBar } from "../components/meals/DayTabBar";
 import { MealDatasheet } from "../components/meals/MealDatasheet";
 import { PlanDatasheet } from "../components/meals/PlanDatasheet";
 import { SlotSwapModal } from "../components/meals/SlotSwapModal";
-import { useCartStore } from "../stores/cart";
+import { useCartStore, type PlanContext } from "../stores/cart";
+import { useProfileStore } from "../stores/profile";
+import type { BodyStats } from "../utils/tdee";
 
 const SLOT_EMOJI: Record<string, string> = {
   breakfast: "🌅",
@@ -43,6 +45,25 @@ export function PlanGeneratorPage() {
   const [showPlanDatasheet, setShowPlanDatasheet] = useState(false);
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const setPlanContext = useCartStore((s) => s.setPlanContext);
+  const profile = useProfileStore((s) => s.profile);
+
+  // Derive body stats from profile if available
+  const bodyStats: BodyStats | undefined =
+    profile?.weight_kg != null &&
+    profile?.height_cm != null &&
+    profile?.age != null &&
+    profile?.gender != null &&
+    profile?.activity_level != null
+      ? {
+          weight: profile.weight_kg,
+          height: profile.height_cm,
+          age: profile.age,
+          gender: profile.gender as BodyStats["gender"],
+          activityLevel: profile.activity_level as BodyStats["activityLevel"],
+        }
+      : undefined;
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -112,6 +133,8 @@ export function PlanGeneratorPage() {
   };
 
   const handleAddPlanToCart = () => {
+    clearCart();
+
     if (mode === "single" && plan) {
       for (const item of plan.items) {
         addItem(item.meal, {
@@ -120,6 +143,16 @@ export function PlanGeneratorPage() {
           extraFat: item.extra_fat,
         });
       }
+      const ctx: PlanContext = {
+        planType: "single",
+        numDays: 1,
+        targetMacros: plan.target_macros,
+        dailySummaries: [
+          { day: 1, target_macros: plan.target_macros, actual_macros: plan.actual_macros },
+        ],
+        totalScore: plan.total_score,
+      };
+      setPlanContext(ctx);
     } else if (multiDayPlan) {
       for (const dayPlan of multiDayPlan.plans) {
         for (const item of dayPlan.items) {
@@ -130,6 +163,21 @@ export function PlanGeneratorPage() {
           });
         }
       }
+      const avgScore =
+        multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
+        multiDayPlan.plans.length;
+      const ctx: PlanContext = {
+        planType: "multi",
+        numDays: multiDayPlan.days,
+        targetMacros: multiDayPlan.plans[0].target_macros,
+        dailySummaries: multiDayPlan.plans.map((p) => ({
+          day: p.day,
+          target_macros: p.target_macros,
+          actual_macros: p.actual_macros,
+        })),
+        totalScore: avgScore,
+      };
+      setPlanContext(ctx);
     }
     navigate("/cart");
   };
@@ -444,6 +492,9 @@ export function PlanGeneratorPage() {
         <PlanDatasheet
           plan={activePlan}
           onClose={() => setShowPlanDatasheet(false)}
+          bodyStats={bodyStats}
+          numDays={mode === "multi" ? multiDayPlan?.days : 1}
+          dailyCalories={activePlan.actual_macros.calories}
         />
       )}
     </div>

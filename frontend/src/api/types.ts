@@ -22,6 +22,11 @@ export interface UserProfile {
   delivery_address: string | null;
   delivery_lat: number | null;
   delivery_lng: number | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  age: number | null;
+  gender: string | null;
+  activity_level: string | null;
 }
 
 export interface UserWithProfile extends User {

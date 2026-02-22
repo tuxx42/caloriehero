@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useCartStore } from "../cart";
+import type { PlanContext } from "../cart";
 import type { Meal } from "../../api/types";
 
 const mockMeal: Meal = {
@@ -31,6 +32,7 @@ describe("useCartStore", () => {
   beforeEach(() => {
     useCartStore.setState({
       items: [],
+      planContext: null,
       pricingRates: {
         protein_price_per_gram: 3,
         carbs_price_per_gram: 1,
@@ -171,5 +173,43 @@ describe("useCartStore", () => {
     const item = useCartStore.getState().items[0];
     // 159 + max(0,10)*3 + max(0,-15)*1 + max(0,5)*1.5 = 159 + 30 + 0 + 7.5 = 196.5
     expect(useCartStore.getState().itemPrice(item)).toBe(196.5);
+  });
+
+  describe("planContext", () => {
+    const mockPlanContext: PlanContext = {
+      planType: "multi",
+      numDays: 7,
+      targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+      dailySummaries: [
+        {
+          day: 1,
+          target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+          actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
+        },
+      ],
+      totalScore: 0.92,
+    };
+
+    it("sets plan context", () => {
+      useCartStore.getState().setPlanContext(mockPlanContext);
+      expect(useCartStore.getState().planContext).toEqual(mockPlanContext);
+    });
+
+    it("clears plan context on clearCart", () => {
+      useCartStore.getState().setPlanContext(mockPlanContext);
+      useCartStore.getState().addItem(mockMeal);
+      useCartStore.getState().clearCart();
+      expect(useCartStore.getState().planContext).toBeNull();
+      expect(useCartStore.getState().items).toHaveLength(0);
+    });
+
+    it("retains plan context when removing an item", () => {
+      useCartStore.getState().setPlanContext(mockPlanContext);
+      useCartStore.getState().addItem(mockMeal);
+      useCartStore.getState().addItem(mockMeal2);
+      useCartStore.getState().removeItem("m1");
+      expect(useCartStore.getState().planContext).toEqual(mockPlanContext);
+      expect(useCartStore.getState().items).toHaveLength(1);
+    });
   });
 });

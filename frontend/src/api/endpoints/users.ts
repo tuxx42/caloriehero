@@ -14,6 +14,11 @@ export function updateProfile(
     delivery_address: string;
     delivery_lat: number;
     delivery_lng: number;
+    weight_kg: number;
+    height_cm: number;
+    age: number;
+    gender: string;
+    activity_level: string;
   }>,
 ): Promise<UserProfile> {
   return api.put<UserProfile>("/users/me/profile", data);

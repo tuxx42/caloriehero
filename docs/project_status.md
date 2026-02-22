@@ -16,7 +16,25 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 - **Payments**: Stripe PaymentIntents + webhooks
 - **Deployment**: Railway single-service (FastAPI serves API + static frontend) + Postgres add-on
 
-### Latest: Multi-Day Meal Planning (4-30 Days)
+### Latest: Cart Plan Context + Body Stats + Weight Projection
+- **Body stats persistence**: 5 new nullable columns on UserProfile (weight_kg, height_cm, age, gender, activity_level)
+  - Backend schemas with validation (gender: male/female, activity_level: sedentary-very_active)
+  - Onboarding wizard sends body stats alongside macro targets
+  - Profile page shows read-only "Body Stats" card
+  - Alembic migration `0b061bb3f9ef`
+- **Cart plan context**: When adding a meal plan to cart, preserves plan metadata
+  - `PlanContext` in cart store: planType, numDays, targetMacros, dailySummaries, totalScore
+  - `PlanSummaryBadge` component: emerald badge showing plan type, match %, avg kcal/day
+  - Shown in Cart page and Checkout page above item list
+  - Cart cleared before adding new plan (prevents mixing plans)
+- **Weight projection**: Caloric surplus/deficit → estimated weight change
+  - `calculateWeightProjection()` utility using TDEE from body stats
+  - `WeightProjectionCard` component: colored card (blue=gain, amber=loss, emerald=maintenance)
+  - Integrated in PlanDatasheet modal and Cart page
+  - Shows: projected weight change, current → projected weight, TDEE, plan avg, daily surplus/deficit
+- 5 new backend tests + 4 weight projection tests + 3 cart context tests + 2 Cart page tests
+
+### Previous: Multi-Day Meal Planning (4-30 Days)
 - **Multi-day engine**: New `generate_multi_day_plan()` loops daily planner with progressive meal exclusion
   - Tracks used meals across days, falls back to full pool when exhausted
   - Reports per-day repeated meal IDs and aggregate stats (unique/repeated counts)
@@ -170,10 +188,12 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 | Backend - Rate Limit | 3 |
 | Backend - Pricing | 11 |
 | Backend - Settings | 8 |
+| Backend - Body Stats | 5 |
 | Backend - E2E | 3 |
-| Frontend - Stores | 16 |
+| Frontend - Stores | 19 |
 | Frontend - Components | 19 |
 | Frontend - Hooks | 8 |
-| Frontend - Pages | 35 |
+| Frontend - Pages | 37 |
 | Frontend - MealDatasheet | 12 |
-| **Total** | **330** |
+| Frontend - Weight Projection | 4 |
+| **Total** | **344** |

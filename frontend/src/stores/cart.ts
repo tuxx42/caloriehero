@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Meal } from "../api/types";
+import type { MacroTargets, Meal } from "../api/types";
 
 export interface MacroExtras {
   extraProtein: number;
@@ -15,6 +15,20 @@ export interface CartItem {
   extraFat: number;
 }
 
+export interface DayMacroSummary {
+  day: number;
+  target_macros: MacroTargets;
+  actual_macros: MacroTargets;
+}
+
+export interface PlanContext {
+  planType: "single" | "multi";
+  numDays: number;
+  targetMacros: MacroTargets;
+  dailySummaries: DayMacroSummary[];
+  totalScore: number;
+}
+
 interface PricingRates {
   protein_price_per_gram: number;
   carbs_price_per_gram: number;
@@ -23,8 +37,10 @@ interface PricingRates {
 
 interface CartState {
   items: CartItem[];
+  planContext: PlanContext | null;
   pricingRates: PricingRates | null;
   setPricingRates: (rates: PricingRates) => void;
+  setPlanContext: (ctx: PlanContext) => void;
   addItem: (meal: Meal, extras?: MacroExtras) => void;
   removeItem: (mealId: string) => void;
   updateQuantity: (mealId: string, quantity: number) => void;
@@ -52,8 +68,10 @@ function calcUnitPrice(item: CartItem, rates: PricingRates | null): number {
 
 export const useCartStore = create<CartState>()((set, get) => ({
   items: [],
+  planContext: null,
   pricingRates: null,
   setPricingRates: (rates) => set({ pricingRates: rates }),
+  setPlanContext: (ctx) => set({ planContext: ctx }),
   addItem: (meal, extras) =>
     set((state) => {
       const ep = extras?.extraProtein ?? 0;
@@ -103,7 +121,7 @@ export const useCartStore = create<CartState>()((set, get) => ({
         ),
       };
     }),
-  clearCart: () => set({ items: [] }),
+  clearCart: () => set({ items: [], planContext: null }),
   itemPrice: (item) => calcUnitPrice(item, get().pricingRates),
   total: () =>
     get().items.reduce(

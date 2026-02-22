@@ -32,6 +32,17 @@ class UserProfileUpdate(BaseModel):
     delivery_address: str | None = None
     delivery_lat: float | None = None
     delivery_lng: float | None = None
+    weight_kg: float | None = Field(default=None, gt=0, le=500)
+    height_cm: float | None = Field(default=None, gt=0, le=300)
+    age: int | None = Field(default=None, gt=0, le=150)
+    gender: str | None = Field(
+        default=None,
+        pattern=r"^(male|female)$",
+    )
+    activity_level: str | None = Field(
+        default=None,
+        pattern=r"^(sedentary|light|moderate|active|very_active)$",
+    )
 
 
 class UserProfileResponse(BaseModel):
@@ -44,6 +55,11 @@ class UserProfileResponse(BaseModel):
     delivery_address: str | None
     delivery_lat: float | None
     delivery_lng: float | None
+    weight_kg: float | None
+    height_cm: float | None
+    age: int | None
+    gender: str | None
+    activity_level: str | None
 
     model_config = {"from_attributes": True}
 

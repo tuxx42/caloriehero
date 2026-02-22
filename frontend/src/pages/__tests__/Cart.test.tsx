@@ -147,4 +147,52 @@ describe("CartPage", () => {
     renderWithRouter(<CartPage />);
     expect(screen.getByText("+5g P, -10g C")).toBeInTheDocument();
   });
+
+  it("shows plan summary badge when planContext is set", () => {
+    useCartStore.setState({
+      items: [
+        {
+          meal: mockMeal,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+        },
+      ],
+      planContext: {
+        planType: "multi",
+        numDays: 7,
+        targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+        dailySummaries: [
+          {
+            day: 1,
+            target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+            actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
+          },
+        ],
+        totalScore: 0.92,
+      },
+    });
+    renderWithRouter(<CartPage />);
+    expect(screen.getByTestId("plan-summary-badge")).toBeInTheDocument();
+    expect(screen.getByText("7-Day Plan")).toBeInTheDocument();
+    expect(screen.getByText("92% match")).toBeInTheDocument();
+  });
+
+  it("does not show plan badge when planContext is null", () => {
+    useCartStore.setState({
+      items: [
+        {
+          meal: mockMeal,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+        },
+      ],
+      planContext: null,
+    });
+    renderWithRouter(<CartPage />);
+    expect(screen.queryByTestId("plan-summary-badge")).not.toBeInTheDocument();
+  });
 });

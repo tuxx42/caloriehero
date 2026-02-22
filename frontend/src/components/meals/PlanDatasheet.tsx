@@ -1,5 +1,8 @@
 import { useRef, useState } from "react";
 import type { DailyPlan } from "../../api/types";
+import type { BodyStats } from "../../utils/tdee";
+import { calculateWeightProjection } from "../../utils/weightProjection";
+import { WeightProjectionCard } from "../common/WeightProjectionCard";
 import { RadarChart } from "../common/RadarChart";
 import { svgToDataUrl } from "../../utils/svgToImage";
 import { generatePlanPdf } from "../../utils/planPdf";
@@ -7,6 +10,9 @@ import { generatePlanPdf } from "../../utils/planPdf";
 interface PlanDatasheetProps {
   plan: DailyPlan;
   onClose: () => void;
+  bodyStats?: BodyStats;
+  numDays?: number;
+  dailyCalories?: number;
 }
 
 const SLOT_EMOJI: Record<string, string> = {
@@ -48,7 +54,7 @@ function formatDelta(delta: number, unit: string): string {
   return `${sign}${Math.round(delta)}${unit}`;
 }
 
-export function PlanDatasheet({ plan, onClose }: PlanDatasheetProps) {
+export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories }: PlanDatasheetProps) {
   const radarRef = useRef<SVGSVGElement>(null);
   const [downloading, setDownloading] = useState(false);
   const { actual_macros: actual, target_macros: target } = plan;
@@ -259,6 +265,14 @@ export function PlanDatasheet({ plan, onClose }: PlanDatasheetProps) {
             })}
           </div>
         </div>
+
+        {/* Weight Projection */}
+        {bodyStats && numDays && dailyCalories && (
+          <WeightProjectionCard
+            projection={calculateWeightProjection(bodyStats, dailyCalories, numDays)}
+            currentWeight={bodyStats.weight}
+          />
+        )}
 
         {/* % Daily Values */}
         <div>

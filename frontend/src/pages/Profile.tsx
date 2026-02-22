@@ -4,7 +4,7 @@ import { getMe, updateProfile } from "../api/endpoints/users";
 import type { UserWithProfile } from "../api/types";
 import { useAuthStore } from "../stores/auth";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
-import { FITNESS_GOALS, ALLERGEN_OPTIONS, DIETARY_OPTIONS } from "../utils/constants";
+import { FITNESS_GOALS, ALLERGEN_OPTIONS, DIETARY_OPTIONS, ACTIVITY_LEVELS } from "../utils/constants";
 
 export function ProfilePage() {
   const [userData, setUserData] = useState<UserWithProfile | null>(null);
@@ -82,6 +82,47 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Body Stats */}
+      {userData?.profile?.weight_kg != null && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-gray-900">Body Stats</h3>
+            <button
+              onClick={() => navigate("/onboarding")}
+              className="text-sm text-emerald-600 font-medium hover:text-emerald-700"
+            >
+              Update
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-gray-500 text-xs">Weight</div>
+              <div className="font-semibold text-gray-900">{userData.profile.weight_kg} kg</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-gray-500 text-xs">Height</div>
+              <div className="font-semibold text-gray-900">{userData.profile.height_cm} cm</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-gray-500 text-xs">Age</div>
+              <div className="font-semibold text-gray-900">{userData.profile.age}</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-gray-500 text-xs">Gender</div>
+              <div className="font-semibold text-gray-900 capitalize">{userData.profile.gender}</div>
+            </div>
+          </div>
+          {userData.profile.activity_level && (
+            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+              <div className="text-gray-500 text-xs">Activity Level</div>
+              <div className="font-semibold text-gray-900">
+                {ACTIVITY_LEVELS.find((a) => a.value === userData.profile?.activity_level)?.label ?? userData.profile.activity_level}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Macro targets */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">

@@ -1,5 +1,40 @@
 # CalorieHero - Changelog
 
+## 2026-02-22 — Cart Plan Context + Body Stats + Weight Projection
+
+### Backend
+- `UserProfile` model: 5 new nullable columns — weight_kg, height_cm, age, gender, activity_level
+- `UserProfileUpdate` schema: body stats fields with validation (gender: male/female, activity_level enum, numeric bounds)
+- `UserProfileResponse` schema: includes body stats in API responses
+- Existing `update_profile()` setattr loop handles new fields automatically
+- Alembic migration `0b061bb3f9ef`: adds 5 columns to user_profiles table
+- 5 new tests (save body stats, get /me returns stats, optional null, invalid gender, invalid activity_level)
+
+### Frontend — Body Stats
+- `UserProfile` type: added weight_kg, height_cm, age, gender, activity_level fields
+- `updateProfile()` API: added body stats fields to request type
+- `Onboarding.tsx`: `handleFinish()` sends body stats alongside macro targets
+- `Profile.tsx`: read-only "Body Stats" card with weight/height/age/gender/activity level
+
+### Frontend — Cart Plan Context
+- `cart.ts` store: `PlanContext` interface (planType, numDays, targetMacros, dailySummaries, totalScore)
+- `setPlanContext()` method, cleared on `clearCart()`
+- `PlanGenerator.tsx`: clears cart before adding plan, builds and sets PlanContext metadata
+- `PlanSummaryBadge` component: emerald badge with plan type, match %, avg kcal/day
+- Badge shown in Cart page and Checkout page above item list
+- 3 new cart store tests (set, clear, retain on item removal) + 2 Cart page tests
+
+### Frontend — Weight Projection
+- `weightProjection.ts`: `calculateWeightProjection()` — TDEE-based caloric surplus/deficit → weight change (7700 kcal/kg)
+- `WeightProjectionCard` component: colored card (blue=gain, amber=loss, emerald=maintenance)
+  - Shows projected weight change, current → projected weight, TDEE, plan avg, daily surplus/deficit
+- Integrated into `PlanDatasheet` modal (between Calorie Gap and % Daily Values)
+- Integrated into `Cart` page (below plan badge when body stats available)
+- `PlanGenerator.tsx`: derives bodyStats from profile store, passes to PlanDatasheet
+- 4 new tests (deficit, surplus, maintenance, single-day)
+
+---
+
 ## 2026-02-22 — Multi-Day Meal Planning (4-30 Days)
 
 ### Engine
