@@ -8,6 +8,7 @@ import type { DailyPlan, PlanItem } from "../api/types";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { MacroBar } from "../components/common/MacroBar";
 import { MealDatasheet } from "../components/meals/MealDatasheet";
+import { PlanDatasheet } from "../components/meals/PlanDatasheet";
 import { SlotSwapModal } from "../components/meals/SlotSwapModal";
 import { useCartStore } from "../stores/cart";
 
@@ -33,6 +34,7 @@ export function PlanGeneratorPage() {
     currentMealId: string;
   } | null>(null);
   const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
+  const [showPlanDatasheet, setShowPlanDatasheet] = useState(false);
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
 
@@ -121,12 +123,22 @@ export function PlanGeneratorPage() {
       {plan && !loading && (
         <>
           {/* Score + macros */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowPlanDatasheet(true)}
+            className="w-full text-left bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3 hover:border-emerald-200 transition-colors cursor-pointer"
+          >
             <div className="flex justify-between items-center">
-              <h2 className="font-semibold text-gray-900">Daily Overview</h2>
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
-                {Math.round(plan.total_score * 100)}% match
-              </span>
+              <div>
+                <h2 className="font-semibold text-gray-900">Daily Overview</h2>
+                <span className="text-xs text-gray-400">Tap for details</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
+                  {Math.round(plan.total_score * 100)}% match
+                </span>
+                <span className="text-gray-300 text-sm">›</span>
+              </div>
             </div>
             <MacroBar
               label="Calories"
@@ -152,7 +164,7 @@ export function PlanGeneratorPage() {
               target={plan.target_macros.fat}
               color="bg-rose-500"
             />
-          </div>
+          </button>
 
           {/* Slot cards */}
           <div className="space-y-3">
@@ -279,6 +291,14 @@ export function PlanGeneratorPage() {
           meal={detailItem.meal}
           targetMacros={plan.target_macros}
           onClose={() => setDetailItem(null)}
+        />
+      )}
+
+      {/* Plan datasheet modal */}
+      {showPlanDatasheet && plan && (
+        <PlanDatasheet
+          plan={plan}
+          onClose={() => setShowPlanDatasheet(false)}
         />
       )}
     </div>
