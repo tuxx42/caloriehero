@@ -4,8 +4,10 @@ import { getPricing } from "../api/endpoints/settings";
 import type { Meal, PricingConfig } from "../api/types";
 import { MealCard } from "../components/common/MealCard";
 import { MealCustomizer } from "../components/meals/MealCustomizer";
+import { MealDatasheet } from "../components/meals/MealDatasheet";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { useCartStore } from "../stores/cart";
+import { useProfileStore } from "../stores/profile";
 
 const CATEGORIES = [
   { value: "", label: "All" },
@@ -21,8 +23,11 @@ export function MealsPage() {
   const [category, setCategory] = useState("");
   const [pricing, setPricing] = useState<PricingConfig | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [infoMeal, setInfoMeal] = useState<Meal | null>(null);
   const addItem = useCartStore((s) => s.addItem);
   const setPricingRates = useCartStore((s) => s.setPricingRates);
+  const profile = useProfileStore((s) => s.profile);
+  const targetMacros = profile?.macro_targets ?? null;
 
   useEffect(() => {
     getPricing()
@@ -75,6 +80,7 @@ export function MealsPage() {
               meal={meal}
               onAddToCart={() => setSelectedMeal(meal)}
               onSelect={() => setSelectedMeal(meal)}
+              onInfo={() => setInfoMeal(meal)}
             />
           ))}
         </div>
@@ -87,6 +93,15 @@ export function MealsPage() {
           pricing={pricing}
           onAdd={addItem}
           onClose={() => setSelectedMeal(null)}
+        />
+      )}
+
+      {/* Meal datasheet modal */}
+      {infoMeal && targetMacros && (
+        <MealDatasheet
+          meal={infoMeal}
+          targetMacros={targetMacros}
+          onClose={() => setInfoMeal(null)}
         />
       )}
     </div>

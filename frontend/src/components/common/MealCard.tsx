@@ -4,10 +4,11 @@ interface MealCardProps {
   meal: Meal;
   onSelect?: (meal: Meal) => void;
   onAddToCart?: (meal: Meal) => void;
+  onInfo?: (meal: Meal) => void;
   score?: number;
 }
 
-export function MealCard({ meal, onSelect, onAddToCart, score }: MealCardProps) {
+export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCardProps) {
   return (
     <div
       className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -67,17 +68,30 @@ export function MealCard({ meal, onSelect, onAddToCart, score }: MealCardProps) 
         </div>
         <div className="flex justify-between items-center">
           <span className="font-bold text-gray-900">฿{meal.price}</span>
-          {onAddToCart && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(meal);
-              }}
-              className="px-3 py-1.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
-            >
-              Add
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {onInfo && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInfo(meal);
+                }}
+                className="px-3 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                Info
+              </button>
+            )}
+            {onAddToCart && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(meal);
+                }}
+                className="px-3 py-1.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
+              >
+                Add
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

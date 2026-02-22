@@ -303,23 +303,23 @@ export function PlanGeneratorPage() {
       {activePlan && !loading && (
         <>
           {/* Score + macros */}
-          <button
-            type="button"
-            onClick={() => setShowPlanDatasheet(true)}
-            className="w-full text-left bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3 hover:border-emerald-200 transition-colors cursor-pointer"
-          >
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="font-semibold text-gray-900">
                   {mode === "multi" ? `Day ${activeDay} Overview` : "Daily Overview"}
                 </h2>
-                <span className="text-xs text-gray-400">Tap for details</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
                   {Math.round(activePlan.total_score * 100)}% match
                 </span>
-                <span className="text-gray-300 text-sm">›</span>
+                <button
+                  onClick={() => setShowPlanDatasheet(true)}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  Details
+                </button>
               </div>
             </div>
             <MacroBar
@@ -346,7 +346,7 @@ export function PlanGeneratorPage() {
               target={activePlan.target_macros.fat}
               color="bg-rose-500"
             />
-          </button>
+          </div>
 
           {/* Slot cards */}
           <div className="space-y-3">
@@ -380,10 +380,16 @@ export function PlanGeneratorPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-xs text-emerald-600 font-medium">
-                            {Math.round(item.score * 100)}% match
+                            {Math.round(item.score * 100)}%
                           </span>
+                          <button
+                            onClick={() => setDetailItem(item)}
+                            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            Info
+                          </button>
                           <button
                             onClick={() =>
                               setSwapSlot({
@@ -398,12 +404,9 @@ export function PlanGeneratorPage() {
                           </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setDetailItem(item)}
-                        className="text-sm text-gray-700 hover:text-emerald-600 text-left transition-colors"
-                      >
+                      <p className="text-sm text-gray-700">
                         {item.meal_name}
-                      </button>
+                      </p>
                       {extras.length > 0 && (
                         <p className="text-xs text-indigo-600 mt-0.5">
                           {extras.join(", ")}
