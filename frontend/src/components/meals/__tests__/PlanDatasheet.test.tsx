@@ -1,7 +1,15 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PlanDatasheet } from "../PlanDatasheet";
 import type { DailyPlan, Meal, MacroTargets } from "../../../api/types";
+
+vi.mock("../../../utils/planPdf", () => ({
+  generatePlanPdf: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../../utils/svgToImage", () => ({
+  svgToDataUrl: vi.fn().mockResolvedValue("data:image/png;base64,mock"),
+}));
 
 function makeMeal(overrides: Partial<Meal> = {}): Meal {
   return {
@@ -310,5 +318,39 @@ describe("PlanDatasheet", () => {
     };
     render(<PlanDatasheet plan={noTagsPlan} onClose={mockOnClose} />);
     expect(screen.queryByText("Dietary Tags")).not.toBeInTheDocument();
+  });
+
+  it("renders Download PDF button", () => {
+    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
+    expect(screen.getByText("Download PDF")).toBeInTheDocument();
+  });
+
+  it("calls generatePlanPdf when Download PDF is clicked", async () => {
+    const { generatePlanPdf } = await import("../../../utils/planPdf");
+    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
+    fireEvent.click(screen.getByText("Download PDF"));
+    await waitFor(() => {
+      expect(generatePlanPdf).toHaveBeenCalledWith({
+        plan: mockPlan,
+        radarChartDataUrl: "data:image/png;base64,mock",
+      });
+    });
+  });
+
+  it("shows Generating... loading state while PDF generates", async () => {
+    const { generatePlanPdf } = await import("../../../utils/planPdf");
+    let resolveGenerate!: () => void;
+    vi.mocked(generatePlanPdf).mockImplementation(
+      () => new Promise<void>((resolve) => { resolveGenerate = resolve; }),
+    );
+    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
+    fireEvent.click(screen.getByText("Download PDF"));
+    await waitFor(() => {
+      expect(screen.getByText("Generating...")).toBeInTheDocument();
+    });
+    resolveGenerate();
+    await waitFor(() => {
+      expect(screen.getByText("Download PDF")).toBeInTheDocument();
+    });
   });
 });

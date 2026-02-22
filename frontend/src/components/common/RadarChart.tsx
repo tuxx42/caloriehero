@@ -1,7 +1,10 @@
+import { type Ref } from "react";
+
 interface RadarChartProps {
   values: number[];
   targets: number[];
   labels: string[];
+  ref?: Ref<SVGSVGElement>;
 }
 
 const SIZE = 280;
@@ -34,7 +37,7 @@ function makePolygonPoints(
     .join(" ");
 }
 
-export function RadarChart({ values, targets, labels }: RadarChartProps) {
+export function RadarChart({ values, targets, labels, ref }: RadarChartProps) {
   const count = labels.length;
   const step = 360 / count;
 
@@ -47,6 +50,7 @@ export function RadarChart({ values, targets, labels }: RadarChartProps) {
 
   return (
     <svg
+      ref={ref}
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       className="w-full max-w-[280px] mx-auto"
       role="img"
@@ -121,7 +125,9 @@ export function RadarChart({ values, targets, labels }: RadarChartProps) {
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            className="text-[10px] fill-gray-500 font-medium"
+            fill="#6b7280"
+            fontSize="10"
+            fontWeight="500"
           >
             {label}
           </text>

@@ -1,5 +1,8 @@
+import { useRef, useState } from "react";
 import type { DailyPlan } from "../../api/types";
 import { RadarChart } from "../common/RadarChart";
+import { svgToDataUrl } from "../../utils/svgToImage";
+import { generatePlanPdf } from "../../utils/planPdf";
 
 interface PlanDatasheetProps {
   plan: DailyPlan;
@@ -46,7 +49,22 @@ function formatDelta(delta: number, unit: string): string {
 }
 
 export function PlanDatasheet({ plan, onClose }: PlanDatasheetProps) {
+  const radarRef = useRef<SVGSVGElement>(null);
+  const [downloading, setDownloading] = useState(false);
   const { actual_macros: actual, target_macros: target } = plan;
+
+  async function handleDownloadPdf() {
+    setDownloading(true);
+    try {
+      let radarChartDataUrl: string | undefined;
+      if (radarRef.current) {
+        radarChartDataUrl = await svgToDataUrl(radarRef.current, 280, 280);
+      }
+      await generatePlanPdf({ plan, radarChartDataUrl });
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   // Aggregate fiber/sugar from all meals
   const totalFiber = plan.items.reduce((s, i) => s + (i.meal.fiber ?? 0), 0);
@@ -158,6 +176,7 @@ export function PlanDatasheet({ plan, onClose }: PlanDatasheetProps) {
 
         {/* Radar chart */}
         <RadarChart
+          ref={radarRef}
           values={radarValues}
           targets={radarTargets}
           labels={radarLabels}
@@ -443,12 +462,21 @@ export function PlanDatasheet({ plan, onClose }: PlanDatasheetProps) {
               ฿{totalPrice.toFixed(0)}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-          >
-            Close
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {downloading ? "Generating..." : "Download PDF"}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
