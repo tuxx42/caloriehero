@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  generatePlans,
+  generatePlan,
   recalculatePlan,
 } from "../api/endpoints/matching";
 import type { DailyPlan } from "../api/types";
@@ -17,16 +17,13 @@ const SLOT_EMOJI: Record<string, string> = {
   snack: "🍎",
 };
 
-const VARIANT_LABELS = ["Plan A", "Plan B", "Plan C"];
-
 function formatExtra(value: number, label: string): string | null {
   if (value === 0) return null;
   return `${value > 0 ? "+" : ""}${value}g ${label}`;
 }
 
 export function PlanGeneratorPage() {
-  const [variants, setVariants] = useState<DailyPlan[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [swapping, setSwapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,36 +34,31 @@ export function PlanGeneratorPage() {
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
 
-  const activePlan = variants[activeIndex] ?? null;
-
   const handleGenerate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await generatePlans(3);
-      setVariants(result);
-      setActiveIndex(0);
+      const result = await generatePlan();
+      setPlan(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate plans");
+      setError(err instanceof Error ? err.message : "Failed to generate plan");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSwap = async (slot: string, newMealId: string) => {
-    if (!activePlan) return;
+    if (!plan) return;
     setSwapSlot(null);
     setSwapping(true);
     try {
-      const newItems = activePlan.items.map((item) =>
+      const newItems = plan.items.map((item) =>
         item.slot === slot
           ? { slot, meal_id: newMealId }
           : { slot: item.slot, meal_id: item.meal_id },
       );
       const recalculated = await recalculatePlan(newItems);
-      setVariants((prev) =>
-        prev.map((v, i) => (i === activeIndex ? recalculated : v)),
-      );
+      setPlan(recalculated);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to swap meal",
@@ -77,8 +69,8 @@ export function PlanGeneratorPage() {
   };
 
   const handleAddPlanToCart = () => {
-    if (!activePlan) return;
-    for (const item of activePlan.items) {
+    if (!plan) return;
+    for (const item of plan.items) {
       addItem(item.meal, {
         extraProtein: item.extra_protein,
         extraCarbs: item.extra_carbs,
@@ -88,9 +80,9 @@ export function PlanGeneratorPage() {
     navigate("/cart");
   };
 
-  const planTotalPrice = activePlan
-    ? activePlan.items.reduce((sum, item) => sum + item.meal.price, 0) +
-      activePlan.total_extra_price
+  const planTotalPrice = plan
+    ? plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
+      plan.total_extra_price
     : 0;
 
   return (
@@ -111,9 +103,9 @@ export function PlanGeneratorPage() {
       >
         {loading
           ? "Generating..."
-          : variants.length > 0
-            ? "Regenerate Plans"
-            : "Generate Plans"}
+          : plan
+            ? "Regenerate Plan"
+            : "Generate Plan"}
       </button>
 
       {loading && <LoadingSpinner />}
@@ -124,64 +116,45 @@ export function PlanGeneratorPage() {
         </div>
       )}
 
-      {/* Variant tabs */}
-      {variants.length > 1 && !loading && (
-        <div className="flex gap-2">
-          {variants.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIndex(i)}
-              className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-colors ${
-                i === activeIndex
-                  ? "bg-emerald-500 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {VARIANT_LABELS[i] ?? `Plan ${i + 1}`}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {activePlan && !loading && (
+      {plan && !loading && (
         <>
           {/* Score + macros */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
             <div className="flex justify-between items-center">
               <h2 className="font-semibold text-gray-900">Daily Overview</h2>
               <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
-                {Math.round(activePlan.total_score * 100)}% match
+                {Math.round(plan.total_score * 100)}% match
               </span>
             </div>
             <MacroBar
               label="Calories"
-              value={activePlan.actual_macros.calories}
-              target={activePlan.target_macros.calories}
+              value={plan.actual_macros.calories}
+              target={plan.target_macros.calories}
               unit="kcal"
             />
             <MacroBar
               label="Protein"
-              value={activePlan.actual_macros.protein}
-              target={activePlan.target_macros.protein}
+              value={plan.actual_macros.protein}
+              target={plan.target_macros.protein}
               color="bg-blue-500"
             />
             <MacroBar
               label="Carbs"
-              value={activePlan.actual_macros.carbs}
-              target={activePlan.target_macros.carbs}
+              value={plan.actual_macros.carbs}
+              target={plan.target_macros.carbs}
               color="bg-amber-500"
             />
             <MacroBar
               label="Fat"
-              value={activePlan.actual_macros.fat}
-              target={activePlan.target_macros.fat}
+              value={plan.actual_macros.fat}
+              target={plan.target_macros.fat}
               color="bg-rose-500"
             />
           </div>
 
           {/* Slot cards */}
           <div className="space-y-3">
-            {activePlan.items.map((item) => {
+            {plan.items.map((item) => {
               const extras = [
                 formatExtra(item.extra_protein, "P"),
                 formatExtra(item.extra_carbs, "C"),
@@ -214,7 +187,7 @@ export function PlanGeneratorPage() {
                               })
                             }
                             disabled={swapping}
-                            className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
                           >
                             Swap
                           </button>
@@ -283,11 +256,11 @@ export function PlanGeneratorPage() {
       )}
 
       {/* Swap modal */}
-      {swapSlot && activePlan && (
+      {swapSlot && plan && (
         <SlotSwapModal
           slot={swapSlot.slot}
           currentMealId={swapSlot.currentMealId}
-          planMealIds={activePlan.items.map((i) => i.meal_id)}
+          planMealIds={plan.items.map((i) => i.meal_id)}
           onSwap={handleSwap}
           onClose={() => setSwapSlot(null)}
         />
