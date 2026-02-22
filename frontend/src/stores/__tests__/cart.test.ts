@@ -22,6 +22,7 @@ const mockMeal: Meal = {
   protein_price_per_gram: null,
   carbs_price_per_gram: null,
   fat_price_per_gram: null,
+  nutritional_benefits: null,
 };
 
 const mockMeal2: Meal = { ...mockMeal, id: "m2", name: "Meal 2", price: 200 };

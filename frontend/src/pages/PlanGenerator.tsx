@@ -4,9 +4,10 @@ import {
   generatePlan,
   recalculatePlan,
 } from "../api/endpoints/matching";
-import type { DailyPlan } from "../api/types";
+import type { DailyPlan, PlanItem } from "../api/types";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { MacroBar } from "../components/common/MacroBar";
+import { MealDatasheet } from "../components/meals/MealDatasheet";
 import { SlotSwapModal } from "../components/meals/SlotSwapModal";
 import { useCartStore } from "../stores/cart";
 
@@ -31,6 +32,7 @@ export function PlanGeneratorPage() {
     slot: string;
     currentMealId: string;
   } | null>(null);
+  const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
 
@@ -193,7 +195,12 @@ export function PlanGeneratorPage() {
                           </button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700">{item.meal_name}</p>
+                      <button
+                        onClick={() => setDetailItem(item)}
+                        className="text-sm text-gray-700 hover:text-emerald-600 text-left transition-colors"
+                      >
+                        {item.meal_name}
+                      </button>
                       {extras.length > 0 && (
                         <p className="text-xs text-indigo-600 mt-0.5">
                           {extras.join(", ")}
@@ -263,6 +270,15 @@ export function PlanGeneratorPage() {
           planMealIds={plan.items.map((i) => i.meal_id)}
           onSwap={handleSwap}
           onClose={() => setSwapSlot(null)}
+        />
+      )}
+
+      {/* Meal datasheet modal */}
+      {detailItem && plan && (
+        <MealDatasheet
+          meal={detailItem.meal}
+          targetMacros={plan.target_macros}
+          onClose={() => setDetailItem(null)}
         />
       )}
     </div>

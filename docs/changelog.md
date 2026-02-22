@@ -1,5 +1,21 @@
 # CalorieHero - Changelog
 
+## 2026-02-22 — Meal Nutrition Datasheet + Deduplicate Meals
+
+### Meal Nutrition Datasheet
+- **RadarChart component** (`frontend/src/components/common/RadarChart.tsx`): Pure SVG spider chart with 6 axes (Calories, Protein, Carbs, Fat, Fiber, Sugar), two overlaid polygons (meal values in emerald vs targets in gray dashed), values normalized as % of target capped at 150%
+- **MealDatasheet modal** (`frontend/src/components/meals/MealDatasheet.tsx`): Tappable from plan generator, shows meal image/emoji, name, category badge, serving size, radar chart, % daily value table, allergen badges (red), dietary tag badges (green), nutritional benefits text, price
+- **PlanGenerator integration**: Meal names in slot cards are now tappable buttons that open the datasheet modal
+- **nutritional_benefits field**: Added to Meal model, schemas, and seed data (2-3 sentence health benefits per meal)
+- **Alembic migration** `c4d5e6f7g8h9`: Adds `nutritional_benefits` TEXT column to meals table
+- 12 new frontend tests for MealDatasheet component
+
+### Deduplicate Meals
+- **Seed script guards**: Added `SELECT ... LIMIT 1` existence checks before inserting app settings, meals, delivery zones, and delivery slots — prevents duplicates when running `python seed.py` multiple times
+- Delivery slots are only created when zones are freshly seeded (nested under zone guard)
+
+---
+
 ## 2026-02-22 — Complete Rewrite: Python + React
 
 ### Overview

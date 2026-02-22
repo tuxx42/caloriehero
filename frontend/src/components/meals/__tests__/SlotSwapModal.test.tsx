@@ -29,6 +29,7 @@ const mockMeal: Meal = {
   protein_price_per_gram: null,
   carbs_price_per_gram: null,
   fat_price_per_gram: null,
+  nutritional_benefits: null,
 };
 
 const mockAlternatives: SlotAlternative[] = [

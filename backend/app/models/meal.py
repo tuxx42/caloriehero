@@ -27,3 +27,4 @@ class Meal(Base, UUIDMixin, TimestampMixin):
     protein_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)
     carbs_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)
     fat_price_per_gram: Mapped[float | None] = mapped_column(Float, nullable=True)
+    nutritional_benefits: Mapped[str | None] = mapped_column(Text, nullable=True)

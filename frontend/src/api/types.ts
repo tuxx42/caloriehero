@@ -48,6 +48,7 @@ export interface Meal {
   protein_price_per_gram: number | null;
   carbs_price_per_gram: number | null;
   fat_price_per_gram: number | null;
+  nutritional_benefits: string | null;
 }
 
 export interface OrderItem {

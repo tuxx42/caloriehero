@@ -16,7 +16,19 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 - **Payments**: Stripe PaymentIntents + webhooks
 - **Deployment**: Railway single-service (FastAPI serves API + static frontend) + Postgres add-on
 
-### Latest: Railway Deployment Setup
+### Latest: Meal Nutrition Datasheet + Dedup
+- **Meal Datasheet modal**: Tap any meal in generated plan to see detailed nutritional breakdown
+  - SVG radar chart comparing meal macros vs daily targets (6 axes: calories, protein, carbs, fat, fiber, sugar)
+  - % Daily Value table with computed percentages
+  - Allergen badges (red pills) and dietary tag badges (green pills)
+  - Nutritional benefits text blurb per meal
+  - Same bottom-sheet/centered modal pattern as MealCustomizer
+- **Nutritional benefits field**: Added `nutritional_benefits` text column to Meal model with 2-3 sentence descriptions for all 20 seed meals
+- **Seed script dedup**: Added existence guards for meals, zones, slots, and app settings — re-running seed no longer creates duplicates
+- **Alembic migration**: `c4d5e6f7g8h9` adds `nutritional_benefits` column
+- 12 new frontend tests (MealDatasheet component)
+
+### Railway Deployment Setup
 - Multi-stage `Dockerfile` at repo root (Node builds frontend, Python serves all)
 - `railway.toml` with build config, start command, health check
 - Redis made optional (`REDIS_URL` empty = disabled)
@@ -154,4 +166,5 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 | Frontend - Components | 15 |
 | Frontend - Hooks | 8 |
 | Frontend - Pages | 27 |
-| **Total** | **293** |
+| Frontend - MealDatasheet | 12 |
+| **Total** | **305** |

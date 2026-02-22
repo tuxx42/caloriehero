@@ -24,6 +24,7 @@ class MealBase(BaseModel):
     protein_price_per_gram: float | None = None
     carbs_price_per_gram: float | None = None
     fat_price_per_gram: float | None = None
+    nutritional_benefits: str | None = None
 
 
 class MealCreate(MealBase):
@@ -52,6 +53,7 @@ class MealUpdate(BaseModel):
     protein_price_per_gram: float | None = None
     carbs_price_per_gram: float | None = None
     fat_price_per_gram: float | None = None
+    nutritional_benefits: str | None = None
 
 
 class MealResponse(MealBase):
