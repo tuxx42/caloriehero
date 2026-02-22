@@ -14,7 +14,7 @@ COPY backend/pyproject.toml ./
 RUN pip install --no-cache-dir .
 COPY backend/app/ app/
 COPY backend/alembic/ alembic/
-COPY backend/alembic.ini backend/seed.py ./
+COPY backend/alembic.ini backend/seed.py backend/promote_admin.py ./
 COPY --from=frontend-build /app/dist static/
 EXPOSE 8000
 CMD ["sh", "-c", "python -m alembic upgrade head 2>&1 && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
