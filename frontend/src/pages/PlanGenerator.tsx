@@ -16,7 +16,8 @@ import { SlotSwapModal } from "../components/meals/SlotSwapModal";
 import { useCartStore, type PlanContext } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
-import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon, FlameIcon, ProteinIcon, GrainIcon, DropletIcon } from "../components/icons/Icons";
+import { generatePlanPdf } from "../utils/planPdf";
+import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon, FlameIcon, ProteinIcon, GrainIcon, DropletIcon, DownloadIcon } from "../components/icons/Icons";
 
 function formatExtra(value: number, label: string): string | null {
   if (value === 0) return null;
@@ -222,6 +223,7 @@ export function PlanGeneratorPage() {
   } | null>(null);
   const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
   const [viewTab, setViewTab] = useState<"meals" | "nutrition">("meals");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
   const addPlanContext = useCartStore((s) => s.addPlanContext);
@@ -360,6 +362,19 @@ export function PlanGeneratorPage() {
       addPlanContext(ctx);
     }
     navigate("/cart");
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!activePlan) return;
+    setDownloadingPdf(true);
+    try {
+      await generatePlanPdf({
+        plan: activePlan,
+        multiDayPlan: mode === "multi" ? multiDayPlan ?? undefined : undefined,
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const planTotalPrice =
@@ -581,7 +596,7 @@ export function PlanGeneratorPage() {
             />
           )}
 
-          {/* Add Plan to Cart */}
+          {/* Add Plan to Cart + Download PDF */}
           <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-slide-up">
             <div className="flex justify-between items-center mb-4">
               <span className="text-stone-600">Total plan price</span>
@@ -589,12 +604,23 @@ export function PlanGeneratorPage() {
                 ฿{planTotalPrice.toFixed(0)}
               </span>
             </div>
-            <button
-              onClick={handleAddPlanToCart}
-              className="w-full py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 shadow-sm"
-            >
-              {mode === "multi" ? "Add All Days to Cart" : "Add Plan to Cart"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddPlanToCart}
+                className="flex-1 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 shadow-sm"
+              >
+                {mode === "multi" ? "Add All Days to Cart" : "Add Plan to Cart"}
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="flex items-center gap-2 px-4 py-3 bg-stone-100 text-stone-700 font-semibold rounded-xl hover:bg-stone-200 active:bg-stone-300 transition-all duration-200 disabled:opacity-50"
+                title={mode === "multi" ? "Download full multi-day plan as PDF" : "Download plan as PDF"}
+              >
+                <DownloadIcon className="w-4 h-4" />
+                {downloadingPdf ? "..." : "PDF"}
+              </button>
+            </div>
           </div>
         </>
       )}
