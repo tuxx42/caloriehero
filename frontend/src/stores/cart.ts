@@ -8,11 +8,13 @@ export interface MacroExtras {
 }
 
 export interface CartItem {
+  id: string;
   meal: Meal;
   quantity: number;
   extraProtein: number;
   extraCarbs: number;
   extraFat: number;
+  planId?: string;
 }
 
 export interface DayMacroSummary {
@@ -22,6 +24,7 @@ export interface DayMacroSummary {
 }
 
 export interface PlanContext {
+  id: string;
   planType: "single" | "multi";
   numDays: number;
   targetMacros: MacroTargets;
@@ -41,9 +44,10 @@ interface CartState {
   pricingRates: PricingRates | null;
   setPricingRates: (rates: PricingRates) => void;
   addPlanContext: (ctx: PlanContext) => void;
-  addItem: (meal: Meal, extras?: MacroExtras) => void;
-  removeItem: (mealId: string) => void;
-  updateQuantity: (mealId: string, quantity: number) => void;
+  addItem: (meal: Meal, extras?: MacroExtras, planId?: string) => void;
+  removeItem: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
+  removePlan: (planId: string) => void;
   clearCart: () => void;
   itemPrice: (item: CartItem) => number;
   total: () => number;
@@ -72,19 +76,20 @@ export const useCartStore = create<CartState>()((set, get) => ({
   pricingRates: null,
   setPricingRates: (rates) => set({ pricingRates: rates }),
   addPlanContext: (ctx) => set((state) => ({ planContexts: [...state.planContexts, ctx] })),
-  addItem: (meal, extras) =>
+  addItem: (meal, extras, planId) =>
     set((state) => {
       const ep = extras?.extraProtein ?? 0;
       const ec = extras?.extraCarbs ?? 0;
       const ef = extras?.extraFat ?? 0;
 
-      // Find existing item with same meal AND same extras
+      // Only deduplicate within the same plan (or among loose items)
       const existing = state.items.find(
         (i) =>
           i.meal.id === meal.id &&
           i.extraProtein === ep &&
           i.extraCarbs === ec &&
-          i.extraFat === ef,
+          i.extraFat === ef &&
+          i.planId === planId,
       );
       if (existing) {
         return {
@@ -97,30 +102,37 @@ export const useCartStore = create<CartState>()((set, get) => ({
         items: [
           ...state.items,
           {
+            id: crypto.randomUUID(),
             meal,
             quantity: 1,
             extraProtein: ep,
             extraCarbs: ec,
             extraFat: ef,
+            planId,
           },
         ],
       };
     }),
-  removeItem: (mealId) =>
+  removeItem: (itemId) =>
     set((state) => ({
-      items: state.items.filter((i) => i.meal.id !== mealId),
+      items: state.items.filter((i) => i.id !== itemId),
     })),
-  updateQuantity: (mealId, quantity) =>
+  updateQuantity: (itemId, quantity) =>
     set((state) => {
       if (quantity <= 0) {
-        return { items: state.items.filter((i) => i.meal.id !== mealId) };
+        return { items: state.items.filter((i) => i.id !== itemId) };
       }
       return {
         items: state.items.map((i) =>
-          i.meal.id === mealId ? { ...i, quantity } : i,
+          i.id === itemId ? { ...i, quantity } : i,
         ),
       };
     }),
+  removePlan: (planId) =>
+    set((state) => ({
+      planContexts: state.planContexts.filter((c) => c.id !== planId),
+      items: state.items.filter((i) => i.planId !== planId),
+    })),
   clearCart: () => set({ items: [], planContexts: [] }),
   itemPrice: (item) => calcUnitPrice(item, get().pricingRates),
   total: () =>

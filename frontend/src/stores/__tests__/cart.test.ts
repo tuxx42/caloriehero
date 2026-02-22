@@ -56,6 +56,7 @@ describe("useCartStore", () => {
     expect(state.items[0].extraProtein).toBe(0);
     expect(state.items[0].extraCarbs).toBe(0);
     expect(state.items[0].extraFat).toBe(0);
+    expect(state.items[0].id).toBeDefined();
   });
 
   it("adds an item with extras", () => {
@@ -86,28 +87,50 @@ describe("useCartStore", () => {
     expect(state.items).toHaveLength(2);
   });
 
-  it("removes an item", () => {
+  it("creates separate items for same meal in different plans", () => {
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-2");
+    const state = useCartStore.getState();
+    expect(state.items).toHaveLength(2);
+    expect(state.items[0].planId).toBe("plan-1");
+    expect(state.items[1].planId).toBe("plan-2");
+  });
+
+  it("deduplicates within same plan", () => {
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    const state = useCartStore.getState();
+    expect(state.items).toHaveLength(1);
+    expect(state.items[0].quantity).toBe(2);
+    expect(state.items[0].planId).toBe("plan-1");
+  });
+
+  it("removes an item by item id", () => {
     useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().removeItem("m1");
+    const itemId = useCartStore.getState().items[0].id;
+    useCartStore.getState().removeItem(itemId);
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
-  it("updates quantity", () => {
+  it("updates quantity by item id", () => {
     useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().updateQuantity("m1", 5);
+    const itemId = useCartStore.getState().items[0].id;
+    useCartStore.getState().updateQuantity(itemId, 5);
     expect(useCartStore.getState().items[0].quantity).toBe(5);
   });
 
   it("removes item when quantity set to 0", () => {
     useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().updateQuantity("m1", 0);
+    const itemId = useCartStore.getState().items[0].id;
+    useCartStore.getState().updateQuantity(itemId, 0);
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
   it("calculates total correctly without extras", () => {
     useCartStore.getState().addItem(mockMeal);
     useCartStore.getState().addItem(mockMeal2);
-    useCartStore.getState().updateQuantity("m1", 2);
+    const item1Id = useCartStore.getState().items[0].id;
+    useCartStore.getState().updateQuantity(item1Id, 2);
     // 159*2 + 200*1 = 518
     expect(useCartStore.getState().total()).toBe(518);
   });
@@ -132,7 +155,8 @@ describe("useCartStore", () => {
   it("calculates item count correctly", () => {
     useCartStore.getState().addItem(mockMeal);
     useCartStore.getState().addItem(mockMeal2);
-    useCartStore.getState().updateQuantity("m1", 3);
+    const item1Id = useCartStore.getState().items[0].id;
+    useCartStore.getState().updateQuantity(item1Id, 3);
     // 3 + 1 = 4
     expect(useCartStore.getState().itemCount()).toBe(4);
   });
@@ -177,6 +201,7 @@ describe("useCartStore", () => {
 
   describe("planContexts", () => {
     const mockPlanContext: PlanContext = {
+      id: "plan-1",
       planType: "multi",
       numDays: 7,
       targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
@@ -191,6 +216,7 @@ describe("useCartStore", () => {
     };
 
     const mockPlanContext2: PlanContext = {
+      id: "plan-2",
       planType: "single",
       numDays: 1,
       targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
@@ -232,11 +258,75 @@ describe("useCartStore", () => {
 
     it("retains plan contexts when removing an item", () => {
       useCartStore.getState().addPlanContext(mockPlanContext);
-      useCartStore.getState().addItem(mockMeal);
-      useCartStore.getState().addItem(mockMeal2);
-      useCartStore.getState().removeItem("m1");
+      useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+      useCartStore.getState().addItem(mockMeal2, undefined, "plan-1");
+      const item1Id = useCartStore.getState().items[0].id;
+      useCartStore.getState().removeItem(item1Id);
       expect(useCartStore.getState().planContexts).toEqual([mockPlanContext]);
       expect(useCartStore.getState().items).toHaveLength(1);
+    });
+  });
+
+  describe("removePlan", () => {
+    it("removes plan context and its items", () => {
+      useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+      useCartStore.getState().addItem(mockMeal2, undefined, "plan-1");
+      useCartStore.getState().addItem(mockMeal, undefined, "plan-2");
+      useCartStore.getState().addPlanContext({
+        id: "plan-1",
+        planType: "single",
+        numDays: 1,
+        targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+        dailySummaries: [{
+          day: 1,
+          target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+        }],
+        totalScore: 0.9,
+      });
+      useCartStore.getState().addPlanContext({
+        id: "plan-2",
+        planType: "single",
+        numDays: 1,
+        targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+        dailySummaries: [{
+          day: 1,
+          target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+        }],
+        totalScore: 0.85,
+      });
+
+      useCartStore.getState().removePlan("plan-1");
+
+      expect(useCartStore.getState().planContexts).toHaveLength(1);
+      expect(useCartStore.getState().planContexts[0].id).toBe("plan-2");
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].planId).toBe("plan-2");
+    });
+
+    it("does not remove loose items when removing a plan", () => {
+      useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+      useCartStore.getState().addItem(mockMeal2); // loose item
+      useCartStore.getState().addPlanContext({
+        id: "plan-1",
+        planType: "single",
+        numDays: 1,
+        targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+        dailySummaries: [{
+          day: 1,
+          target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+        }],
+        totalScore: 0.9,
+      });
+
+      useCartStore.getState().removePlan("plan-1");
+
+      expect(useCartStore.getState().planContexts).toHaveLength(0);
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].meal.id).toBe("m2");
+      expect(useCartStore.getState().items[0].planId).toBeUndefined();
     });
   });
 });

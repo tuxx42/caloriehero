@@ -132,15 +132,18 @@ export function PlanGeneratorPage() {
   };
 
   const handleAddPlanToCart = () => {
+    const planId = crypto.randomUUID();
+
     if (mode === "single" && plan) {
       for (const item of plan.items) {
         addItem(item.meal, {
           extraProtein: item.extra_protein,
           extraCarbs: item.extra_carbs,
           extraFat: item.extra_fat,
-        });
+        }, planId);
       }
       const ctx: PlanContext = {
+        id: planId,
         planType: "single",
         numDays: 1,
         targetMacros: plan.target_macros,
@@ -157,13 +160,14 @@ export function PlanGeneratorPage() {
             extraProtein: item.extra_protein,
             extraCarbs: item.extra_carbs,
             extraFat: item.extra_fat,
-          });
+          }, planId);
         }
       }
       const avgScore =
         multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
         multiDayPlan.plans.length;
       const ctx: PlanContext = {
+        id: planId,
         planType: "multi",
         numDays: multiDayPlan.days,
         targetMacros: multiDayPlan.plans[0].target_macros,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { CartPage } from "../Cart";
 import { useCartStore } from "../../stores/cart";
@@ -28,6 +28,8 @@ const mockMeal: Meal = {
   nutritional_benefits: null,
 };
 
+const mockMeal2: Meal = { ...mockMeal, id: "m2", name: "Salmon Bowl", price: 200 };
+
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
@@ -36,6 +38,7 @@ describe("CartPage", () => {
   beforeEach(() => {
     useCartStore.setState({
       items: [],
+      planContexts: [],
       pricingRates: {
         protein_price_per_gram: 3,
         carbs_price_per_gram: 1,
@@ -54,6 +57,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 2,
           extraProtein: 0,
@@ -71,6 +75,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 2,
           extraProtein: 0,
@@ -88,6 +93,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 0,
@@ -104,6 +110,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 0,
@@ -120,6 +127,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 0,
@@ -136,6 +144,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 5,
@@ -152,15 +161,18 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
         },
       ],
       planContexts: [
         {
+          id: "plan-1",
           planType: "multi",
           numDays: 7,
           targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
@@ -185,6 +197,7 @@ describe("CartPage", () => {
     useCartStore.setState({
       items: [
         {
+          id: "item-1",
           meal: mockMeal,
           quantity: 1,
           extraProtein: 0,
@@ -196,5 +209,163 @@ describe("CartPage", () => {
     });
     renderWithRouter(<CartPage />);
     expect(screen.queryByTestId("plan-summary-badge")).not.toBeInTheDocument();
+  });
+
+  it("groups items under their plan", () => {
+    useCartStore.setState({
+      items: [
+        {
+          id: "item-1",
+          meal: mockMeal,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+          planId: "plan-1",
+        },
+        {
+          id: "item-2",
+          meal: mockMeal2,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+          planId: "plan-2",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
+        },
+        {
+          id: "plan-2",
+          planType: "multi",
+          numDays: 7,
+          targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+            actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
+          }],
+          totalScore: 0.88,
+        },
+      ],
+    });
+    renderWithRouter(<CartPage />);
+    expect(screen.getByText("Daily Plan")).toBeInTheDocument();
+    expect(screen.getByText("7-Day Plan")).toBeInTheDocument();
+    expect(screen.getByText("Grilled Chicken")).toBeInTheDocument();
+    expect(screen.getByText("Salmon Bowl")).toBeInTheDocument();
+  });
+
+  it("shows 'Individual items' heading when both plans and loose items exist", () => {
+    useCartStore.setState({
+      items: [
+        {
+          id: "item-1",
+          meal: mockMeal,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+          planId: "plan-1",
+        },
+        {
+          id: "item-2",
+          meal: mockMeal2,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
+        },
+      ],
+    });
+    renderWithRouter(<CartPage />);
+    expect(screen.getByText("Individual items")).toBeInTheDocument();
+  });
+
+  it("removes a plan and its items when remove button is clicked", () => {
+    useCartStore.setState({
+      items: [
+        {
+          id: "item-1",
+          meal: mockMeal,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+          planId: "plan-1",
+        },
+        {
+          id: "item-2",
+          meal: mockMeal2,
+          quantity: 1,
+          extraProtein: 0,
+          extraCarbs: 0,
+          extraFat: 0,
+          planId: "plan-2",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
+        },
+        {
+          id: "plan-2",
+          planType: "multi",
+          numDays: 7,
+          targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+            actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
+          }],
+          totalScore: 0.88,
+        },
+      ],
+    });
+    renderWithRouter(<CartPage />);
+
+    // Remove the first plan (Daily Plan)
+    const removeBtn = screen.getByLabelText("Remove daily plan");
+    fireEvent.click(removeBtn);
+
+    // Plan 1 items should be gone, plan 2 items remain
+    expect(screen.queryByText("Grilled Chicken")).not.toBeInTheDocument();
+    expect(screen.getByText("Salmon Bowl")).toBeInTheDocument();
+    expect(screen.getByText("7-Day Plan")).toBeInTheDocument();
+    expect(screen.queryByText("Daily Plan")).not.toBeInTheDocument();
   });
 });

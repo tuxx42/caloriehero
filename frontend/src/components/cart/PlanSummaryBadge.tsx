@@ -2,12 +2,13 @@ import type { PlanContext } from "../../stores/cart";
 
 interface PlanSummaryBadgeProps {
   planContexts: PlanContext[];
+  onRemove?: (planId: string) => void;
 }
 
-export function PlanSummaryBadge({ planContexts }: PlanSummaryBadgeProps) {
+export function PlanSummaryBadge({ planContexts, onRemove }: PlanSummaryBadgeProps) {
   return (
     <div className="space-y-2" data-testid="plan-summary-badge">
-      {planContexts.map((ctx, i) => {
+      {planContexts.map((ctx) => {
         const avgCalories =
           ctx.dailySummaries.reduce((s, d) => s + d.actual_macros.calories, 0) /
           ctx.dailySummaries.length;
@@ -15,7 +16,7 @@ export function PlanSummaryBadge({ planContexts }: PlanSummaryBadgeProps) {
 
         return (
           <div
-            key={i}
+            key={ctx.id}
             className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"
           >
             <div className="flex items-center justify-between">
@@ -32,10 +33,21 @@ export function PlanSummaryBadge({ planContexts }: PlanSummaryBadgeProps) {
                   </span>
                 </div>
               </div>
-              <div className="text-right text-xs text-emerald-700">
-                <div className="font-medium">
-                  Avg {Math.round(avgCalories)} kcal/day
+              <div className="flex items-center gap-2">
+                <div className="text-right text-xs text-emerald-700">
+                  <div className="font-medium">
+                    Avg {Math.round(avgCalories)} kcal/day
+                  </div>
                 </div>
+                {onRemove && (
+                  <button
+                    onClick={() => onRemove(ctx.id)}
+                    className="text-emerald-400 hover:text-red-500 transition-colors text-sm ml-1"
+                    aria-label={`Remove ${ctx.numDays === 1 ? "daily" : `${ctx.numDays}-day`} plan`}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
           </div>

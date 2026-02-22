@@ -1,13 +1,75 @@
 import { Link } from "react-router";
 import { PlanSummaryBadge } from "../components/cart/PlanSummaryBadge";
 import { WeightProjectionCard } from "../components/common/WeightProjectionCard";
-import { useCartStore } from "../stores/cart";
+import { useCartStore, type CartItem } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
 import { calculateWeightProjection } from "../utils/weightProjection";
 
+function CartItemRow({
+  item,
+  onUpdateQuantity,
+  onRemove,
+  unitPrice,
+}: {
+  item: CartItem;
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onRemove: (itemId: string) => void;
+  unitPrice: number;
+}) {
+  const { meal, quantity, extraProtein, extraCarbs, extraFat } = item;
+  const hasExtras = extraProtein !== 0 || extraCarbs !== 0 || extraFat !== 0;
+  const extraParts = [
+    extraProtein !== 0 && `${extraProtein > 0 ? "+" : ""}${extraProtein}g P`,
+    extraCarbs !== 0 && `${extraCarbs > 0 ? "+" : ""}${extraCarbs}g C`,
+    extraFat !== 0 && `${extraFat > 0 ? "+" : ""}${extraFat}g F`,
+  ].filter(Boolean);
+
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-gray-900 text-sm truncate">
+          {meal.name}
+        </h3>
+        <p className="text-xs text-gray-500">
+          {Math.round(meal.calories)} cal · ฿{Math.round(unitPrice)}
+        </p>
+        {hasExtras && (
+          <p className="text-xs text-emerald-600 mt-0.5">
+            {extraParts.join(", ")}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onUpdateQuantity(item.id, quantity - 1)}
+          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+        >
+          -
+        </button>
+        <span className="w-6 text-center font-medium text-sm">
+          {quantity}
+        </span>
+        <button
+          onClick={() => onUpdateQuantity(item.id, quantity + 1)}
+          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+        >
+          +
+        </button>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="ml-2 text-red-400 hover:text-red-600 text-sm"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CartPage() {
-  const { items, updateQuantity, removeItem, total, clearCart, itemPrice, planContexts } =
+  const { items, updateQuantity, removeItem, removePlan, total, clearCart, itemPrice, planContexts } =
     useCartStore();
   const profile = useProfileStore((s) => s.profile);
 
@@ -60,6 +122,13 @@ export function CartPage() {
     );
   }
 
+  // Group items by plan
+  const planGroups = planContexts.map((ctx) => ({
+    plan: ctx,
+    items: items.filter((i) => i.planId === ctx.id),
+  }));
+  const looseItems = items.filter((i) => !i.planId);
+
   return (
     <div className="max-w-lg mx-auto space-y-4">
       <div className="flex justify-between items-center">
@@ -72,8 +141,6 @@ export function CartPage() {
         </button>
       </div>
 
-      {planContexts.length > 0 && <PlanSummaryBadge planContexts={planContexts} />}
-
       {weightProjection && bodyStats && (
         <WeightProjectionCard
           projection={weightProjection}
@@ -81,63 +148,44 @@ export function CartPage() {
         />
       )}
 
-      <div className="space-y-3">
-        {items.map((item) => {
-          const { meal, quantity, extraProtein, extraCarbs, extraFat } = item;
-          const unitP = itemPrice(item);
-          const hasExtras = extraProtein !== 0 || extraCarbs !== 0 || extraFat !== 0;
-          const extraParts = [
-            extraProtein !== 0 && `${extraProtein > 0 ? "+" : ""}${extraProtein}g P`,
-            extraCarbs !== 0 && `${extraCarbs > 0 ? "+" : ""}${extraCarbs}g C`,
-            extraFat !== 0 && `${extraFat > 0 ? "+" : ""}${extraFat}g F`,
-          ].filter(Boolean);
+      {/* Plan groups */}
+      {planGroups.map((group) => (
+        <div key={group.plan.id} className="space-y-3">
+          <PlanSummaryBadge
+            planContexts={[group.plan]}
+            onRemove={removePlan}
+          />
+          {group.items.map((item) => (
+            <CartItemRow
+              key={item.id}
+              item={item}
+              onUpdateQuantity={updateQuantity}
+              onRemove={removeItem}
+              unitPrice={itemPrice(item)}
+            />
+          ))}
+        </div>
+      ))}
 
-          return (
-            <div
-              key={`${meal.id}-${extraProtein}-${extraCarbs}-${extraFat}`}
-              className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4"
-            >
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 text-sm truncate">
-                  {meal.name}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {Math.round(meal.calories)} cal · ฿{Math.round(unitP)}
-                </p>
-                {hasExtras && (
-                  <p className="text-xs text-emerald-600 mt-0.5">
-                    {extraParts.join(", ")}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => updateQuantity(meal.id, quantity - 1)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
-                >
-                  -
-                </button>
-                <span className="w-6 text-center font-medium text-sm">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => updateQuantity(meal.id, quantity + 1)}
-                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => removeItem(meal.id)}
-                  className="ml-2 text-red-400 hover:text-red-600 text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Loose items (added individually, not from a plan) */}
+      {looseItems.length > 0 && (
+        <div className="space-y-3">
+          {planGroups.length > 0 && (
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              Individual items
+            </h2>
+          )}
+          {looseItems.map((item) => (
+            <CartItemRow
+              key={item.id}
+              item={item}
+              onUpdateQuantity={updateQuantity}
+              onRemove={removeItem}
+              unitPrice={itemPrice(item)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Total + Checkout */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
