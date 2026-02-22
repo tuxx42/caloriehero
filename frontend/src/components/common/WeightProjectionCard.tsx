@@ -1,4 +1,5 @@
 import type { WeightProjection } from "../../utils/weightProjection";
+import { TrendUpIcon, TrendDownIcon, ScaleIcon } from "../icons/Icons";
 
 interface WeightProjectionCardProps {
   projection: WeightProjection;
@@ -33,7 +34,12 @@ export function WeightProjectionCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{isGain ? "📈" : isLoss ? "📉" : "⚖️"}</span>
+          {isGain
+            ? <TrendUpIcon className={`w-5 h-5 ${colorScheme.text}`} />
+            : isLoss
+              ? <TrendDownIcon className={`w-5 h-5 ${colorScheme.text}`} />
+              : <ScaleIcon className={`w-5 h-5 ${colorScheme.text}`} />
+          }
           <span className={`text-sm font-semibold ${colorScheme.text}`}>
             {numDays}-Day Projection
           </span>

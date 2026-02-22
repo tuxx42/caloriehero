@@ -15,13 +15,7 @@ import { SlotSwapModal } from "../components/meals/SlotSwapModal";
 import { useCartStore, type PlanContext } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
-
-const SLOT_EMOJI: Record<string, string> = {
-  breakfast: "🌅",
-  lunch: "☀️",
-  dinner: "🌙",
-  snack: "🍎",
-};
+import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon } from "../components/icons/Icons";
 
 function formatExtra(value: number, label: string): string | null {
   if (value === 0) return null;
@@ -386,9 +380,10 @@ export function PlanGeneratorPage() {
                       className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">
-                          {SLOT_EMOJI[item.slot] ?? "🍽️"}
-                        </span>
+                        {(() => {
+                          const SlotIconComp = SLOT_ICONS[item.slot] ?? SunriseIcon;
+                          return <SlotIconComp className="w-6 h-6 text-gray-500" />;
+                        })()}
                         <div className="flex-1">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
@@ -407,8 +402,9 @@ export function PlanGeneratorPage() {
                               </span>
                               <button
                                 onClick={() => setDetailItem(item)}
-                                className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                               >
+                                <InfoIcon className="w-3 h-3" />
                                 Info
                               </button>
                               <button
@@ -419,8 +415,9 @@ export function PlanGeneratorPage() {
                                   })
                                 }
                                 disabled={swapping}
-                                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                                className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
                               >
+                                <SwapIcon className="w-3 h-3" />
                                 Swap
                               </button>
                             </div>

@@ -3,9 +3,18 @@ import type { DailyPlan } from "../../api/types";
 import type { BodyStats } from "../../utils/tdee";
 import { calculateWeightProjection } from "../../utils/weightProjection";
 import { WeightProjectionCard } from "../common/WeightProjectionCard";
+import { NutritionLabel } from "../common/NutritionLabel";
+import { AllergenBadge } from "../common/AllergenBadge";
 import { RadarChart } from "../common/RadarChart";
 import { svgToDataUrl } from "../../utils/svgToImage";
 import { generatePlanPdf } from "../../utils/planPdf";
+import {
+  ChartIcon,
+  CloseIcon,
+  DownloadIcon,
+  SLOT_ICONS,
+  SunriseIcon,
+} from "../icons/Icons";
 
 interface PlanDatasheetProps {
   plan: DailyPlan;
@@ -16,13 +25,6 @@ interface PlanDatasheetProps {
   /** Render inline (no modal overlay) when true */
   inline?: boolean;
 }
-
-const SLOT_EMOJI: Record<string, string> = {
-  breakfast: "🌅",
-  lunch: "☀️",
-  dinner: "🌙",
-  snack: "🍎",
-};
 
 const SLOT_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   breakfast: { bg: "bg-emerald-100", text: "text-emerald-700", bar: "bg-emerald-500" },
@@ -54,6 +56,16 @@ function deltaColor(delta: number): string {
 function formatDelta(delta: number, unit: string): string {
   const sign = delta >= 0 ? "+" : "";
   return `${sign}${Math.round(delta)}${unit}`;
+}
+
+function formatExtra(value: number, label: string): string | null {
+  if (value === 0) return null;
+  return `${value > 0 ? "+" : ""}${value}g ${label}`;
+}
+
+function SlotIcon({ slot, className }: { slot: string; className?: string }) {
+  const IconComp = SLOT_ICONS[slot] ?? SunriseIcon;
+  return <IconComp className={className} />;
 }
 
 export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories, inline }: PlanDatasheetProps) {
@@ -109,26 +121,6 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
   // Calorie gap
   const calorieDelta = actual.calories - target.calories;
 
-  // Daily values rows
-  const dailyValues = [
-    { label: "Calories", actual: actual.calories, unit: "kcal", target: target.calories },
-    { label: "Protein", actual: actual.protein, unit: "g", target: target.protein },
-    { label: "Carbs", actual: actual.carbs, unit: "g", target: target.carbs },
-    { label: "Fat", actual: actual.fat, unit: "g", target: target.fat },
-    { label: "Fiber", actual: totalFiber, unit: "g", target: FIBER_RDV },
-    { label: "Sugar", actual: totalSugar, unit: "g", target: SUGAR_RDV },
-  ];
-
-  // Nutrition specs per meal
-  const nutrients = [
-    { key: "calories", label: "Calories", unit: "kcal", target: target.calories },
-    { key: "protein", label: "Protein", unit: "g", target: target.protein },
-    { key: "carbs", label: "Carbs", unit: "g", target: target.carbs },
-    { key: "fat", label: "Fat", unit: "g", target: target.fat },
-    { key: "fiber", label: "Fiber", unit: "g", target: FIBER_RDV },
-    { key: "sugar", label: "Sugar", unit: "g", target: SUGAR_RDV },
-  ] as const;
-
   // Meal calorie contribution
   const totalCal = actual.calories || 1;
   const mealCalShares = plan.items.map((item) => ({
@@ -159,8 +151,113 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
     plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
     plan.total_extra_price;
 
+  // Format date
+  const formattedDate = (() => {
+    try {
+      return new Date(plan.date).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return plan.date;
+    }
+  })();
+
   const content = (
     <>
+      {/* Plan date */}
+      <div className="text-xs text-gray-500">{formattedDate}</div>
+
+      {/* Meal Schedule Table */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">
+          Meal Schedule
+        </h3>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <table className="w-full text-xs" data-testid="meal-schedule-table">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="text-left py-2 pr-2 text-gray-500 font-medium">Meal</th>
+                <th className="text-left py-2 px-1 text-gray-500 font-medium">Item</th>
+                <th className="text-right py-2 px-1 text-gray-500 font-medium">Cal</th>
+                <th className="text-right py-2 px-1 text-gray-500 font-medium">Pro</th>
+                <th className="text-right py-2 px-1 text-gray-500 font-medium">Carb</th>
+                <th className="text-right py-2 pl-1 text-gray-500 font-medium">Fat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.items.map((item) => {
+                const extras = [
+                  formatExtra(item.extra_protein, "P"),
+                  formatExtra(item.extra_carbs, "C"),
+                  formatExtra(item.extra_fat, "F"),
+                ].filter(Boolean);
+
+                return (
+                  <tr key={item.slot} className="border-b border-gray-100">
+                    <td className="py-2 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <SlotIcon slot={item.slot} className="w-4 h-4 text-gray-500" />
+                        <span className="capitalize text-gray-700 font-medium">{item.slot}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-1 text-gray-700">
+                      <div>{item.meal_name}</div>
+                      {extras.length > 0 && (
+                        <div className="text-[10px] text-indigo-500">{extras.join(", ")}</div>
+                      )}
+                      <div className="text-[10px] text-gray-400">
+                        {item.meal.serving_size} &middot; {Math.round(item.score * 100)}% match
+                      </div>
+                    </td>
+                    <td className="text-right py-2 px-1 text-gray-900 font-medium">
+                      {Math.round(item.meal.calories)}
+                    </td>
+                    <td className="text-right py-2 px-1 text-blue-600 font-medium">
+                      {Math.round(item.meal.protein)}g
+                    </td>
+                    <td className="text-right py-2 px-1 text-amber-600 font-medium">
+                      {Math.round(item.meal.carbs)}g
+                    </td>
+                    <td className="text-right py-2 pl-1 text-rose-600 font-medium">
+                      {Math.round(item.meal.fat)}g
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {/* Totals row */}
+              <tr className="border-t-2 border-gray-300 font-bold">
+                <td className="py-2 pr-2 text-gray-900" colSpan={2}>TOTAL</td>
+                <td className={`text-right py-2 px-1 ${pctColor(Math.round((actual.calories / target.calories) * 100))}`}>
+                  {Math.round(actual.calories)}
+                </td>
+                <td className={`text-right py-2 px-1 ${pctColor(Math.round((actual.protein / target.protein) * 100))}`}>
+                  {Math.round(actual.protein)}g
+                </td>
+                <td className={`text-right py-2 px-1 ${pctColor(Math.round((actual.carbs / target.carbs) * 100))}`}>
+                  {Math.round(actual.carbs)}g
+                </td>
+                <td className={`text-right py-2 pl-1 ${pctColor(Math.round((actual.fat / target.fat) * 100))}`}>
+                  {Math.round(actual.fat)}g
+                </td>
+              </tr>
+
+              {/* Target row */}
+              <tr className="text-gray-400">
+                <td className="py-1 pr-2" colSpan={2}>TARGET</td>
+                <td className="text-right py-1 px-1">{Math.round(target.calories)}</td>
+                <td className="text-right py-1 px-1">{Math.round(target.protein)}g</td>
+                <td className="text-right py-1 px-1">{Math.round(target.carbs)}g</td>
+                <td className="text-right py-1 pl-1">{Math.round(target.fat)}g</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Radar chart */}
       <RadarChart
         ref={radarRef}
@@ -255,122 +352,32 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
           />
         )}
 
-        {/* % Daily Values */}
+        {/* FDA Nutrition Label */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            % Daily Values
+            Nutrition Facts
           </h3>
-          <div className="divide-y divide-gray-100">
-            {dailyValues.map((row) => {
-              const pct = Math.round((row.actual / row.target) * 100);
-              return (
-                <div
-                  key={row.label}
-                  className="flex justify-between py-1.5 text-sm"
-                >
-                  <span className="text-gray-700">{row.label}</span>
-                  <span className="text-gray-900 font-medium">
-                    {Math.round(row.actual)}
-                    {row.unit}{" "}
-                    <span className={`font-normal ${pctColor(pct)}`}>
-                      ({pct}%)
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
+          <div className="flex justify-center">
+            <NutritionLabel
+              calories={actual.calories}
+              protein={actual.protein}
+              carbs={actual.carbs}
+              fat={actual.fat}
+              fiber={totalFiber}
+              sugar={totalSugar}
+              targets={{
+                calories: target.calories,
+                protein: target.protein,
+                carbs: target.carbs,
+                fat: target.fat,
+                fiber: FIBER_RDV,
+                sugar: SUGAR_RDV,
+              }}
+            />
           </div>
         </div>
 
-        {/* Nutrition specs table */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            Nutrition Breakdown
-          </h3>
-          <div className="overflow-x-auto -mx-2 px-2">
-            <table className="w-full text-xs" data-testid="nutrition-table">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 pr-2 text-gray-500 font-medium sticky left-0 bg-white">
-                    &nbsp;
-                  </th>
-                  {plan.items.map((item) => (
-                    <th
-                      key={item.slot}
-                      className="text-right py-2 px-1 text-gray-500 font-medium whitespace-nowrap"
-                    >
-                      {SLOT_EMOJI[item.slot] ?? "🍽️"}{" "}
-                      {item.meal_name.length > 10
-                        ? item.meal_name.slice(0, 10) + "…"
-                        : item.meal_name}
-                    </th>
-                  ))}
-                  <th className="text-right py-2 px-1 text-gray-900 font-bold">
-                    Total
-                  </th>
-                  <th className="text-right py-2 px-1 text-gray-500 font-medium">
-                    Target
-                  </th>
-                  <th className="text-right py-2 pl-1 text-gray-500 font-medium">
-                    %
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {nutrients.map((nut) => {
-                  const perMeal = plan.items.map((item) => {
-                    const val = item.meal[nut.key];
-                    return val ?? 0;
-                  });
-                  const total = nut.key === "calories"
-                    ? actual.calories
-                    : nut.key === "protein"
-                      ? actual.protein
-                      : nut.key === "carbs"
-                        ? actual.carbs
-                        : nut.key === "fat"
-                          ? actual.fat
-                          : nut.key === "fiber"
-                            ? totalFiber
-                            : totalSugar;
-                  const pct = Math.round((total / nut.target) * 100);
-
-                  return (
-                    <tr key={nut.key} className="border-b border-gray-50">
-                      <td className="py-1.5 pr-2 text-gray-700 font-medium sticky left-0 bg-white">
-                        {nut.label}
-                      </td>
-                      {perMeal.map((val, i) => (
-                        <td
-                          key={plan.items[i].slot}
-                          className="text-right py-1.5 px-1 text-gray-600"
-                        >
-                          {Math.round(val)}
-                          {nut.unit === "kcal" ? "" : nut.unit}
-                        </td>
-                      ))}
-                      <td className="text-right py-1.5 px-1 text-gray-900 font-bold">
-                        {Math.round(total)}
-                        {nut.unit === "kcal" ? "" : nut.unit}
-                      </td>
-                      <td className="text-right py-1.5 px-1 text-gray-500">
-                        {Math.round(nut.target)}
-                        {nut.unit === "kcal" ? "" : nut.unit}
-                      </td>
-                      <td
-                        className={`text-right py-1.5 pl-1 font-medium ${pctColor(pct)}`}
-                      >
-                        {pct}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Meal calorie contribution bar */}
+        {/* Calorie contribution bar */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">
             Calorie Contribution
@@ -416,15 +423,7 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {[...allergenMap.entries()].map(([allergen, slots]) => (
-                <span
-                  key={allergen}
-                  className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-medium"
-                >
-                  {formatTag(allergen)}{" "}
-                  <span className="text-red-400 font-normal">
-                    ({slots.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(", ")})
-                  </span>
-                </span>
+                <AllergenBadge key={allergen} allergen={allergen} slots={slots} />
               ))}
             </div>
           </div>
@@ -460,8 +459,9 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
         <button
           onClick={handleDownloadPdf}
           disabled={downloading}
-          className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
         >
+          <DownloadIcon className="w-4 h-4" />
           {downloading ? "Generating..." : "Download PDF"}
         </button>
       </div>
@@ -479,7 +479,7 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">📊</span>
+            <ChartIcon className="w-8 h-8 text-emerald-600" />
             <div>
               <h2 className="text-lg font-bold text-gray-900">Daily Plan</h2>
               <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
@@ -489,9 +489,9 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-400 hover:text-gray-600 p-1"
           >
-            ✕
+            <CloseIcon className="w-5 h-5" />
           </button>
         </div>
         {content}

@@ -23,7 +23,16 @@ export function HomePage() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 md:p-10 text-white">
+      <div
+        className="relative rounded-2xl p-6 md:p-10 text-white overflow-hidden"
+      >
+        <img
+          src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1200&q=80"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/80 to-emerald-900/70" />
+        <div className="relative z-10">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">
           Hey {user?.name?.split(" ")[0] ?? "there"}!
         </h1>
@@ -43,6 +52,7 @@ export function HomePage() {
           >
             Browse Meals
           </Link>
+        </div>
         </div>
       </div>
 

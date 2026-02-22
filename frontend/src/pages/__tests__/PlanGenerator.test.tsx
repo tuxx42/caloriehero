@@ -271,7 +271,7 @@ describe("PlanGeneratorPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Macro Split")).toBeInTheDocument();
     });
-    expect(screen.getByText("% Daily Values")).toBeInTheDocument();
+    expect(screen.getByTestId("nutrition-label")).toBeInTheDocument();
   });
 });
 

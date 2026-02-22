@@ -1,4 +1,5 @@
 import type { PlanContext } from "../../stores/cart";
+import { ClipboardIcon, CloseIcon } from "../icons/Icons";
 
 interface PlanSummaryBadgeProps {
   planContexts: PlanContext[];
@@ -21,7 +22,7 @@ export function PlanSummaryBadge({ planContexts, onRemove }: PlanSummaryBadgePro
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg">📋</span>
+                <ClipboardIcon className="w-5 h-5 text-emerald-600" />
                 <div>
                   <span className="text-sm font-semibold text-emerald-800">
                     {ctx.numDays === 1
@@ -42,10 +43,10 @@ export function PlanSummaryBadge({ planContexts, onRemove }: PlanSummaryBadgePro
                 {onRemove && (
                   <button
                     onClick={() => onRemove(ctx.id)}
-                    className="text-emerald-400 hover:text-red-500 transition-colors text-sm ml-1"
+                    className="text-emerald-400 hover:text-red-500 transition-colors ml-1"
                     aria-label={`Remove ${ctx.numDays === 1 ? "daily" : `${ctx.numDays}-day`} plan`}
                   >
-                    ✕
+                    <CloseIcon className="w-4 h-4" />
                   </button>
                 )}
               </div>

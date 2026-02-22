@@ -1,5 +1,51 @@
 # CalorieHero - Changelog
 
+## 2026-02-22 — Design Improvements: SVG Icons, FDA Nutrition Labels, Visual Polish
+
+### Frontend — New Foundation Components
+- `Icons.tsx`: 25+ named SVG icon components (nav, slots, nutrients, UI) — all 24x24, stroke-based, `currentColor`
+- `NutritionLabel.tsx`: FDA-style Nutrition Facts label with %DV column, thick rules, serving size
+- `AllergenBadge.tsx`: Icon + text badge for allergens with optional slot attribution
+- `images.ts`: Centralized Unsplash URLs for hero backgrounds, category fallbacks, empty states
+- `index.css`: Added `.font-fda-title` utility class
+
+### Frontend — PlanDatasheet Overhaul
+- Added meal schedule table showing per-meal macros (Cal/Pro/Carb/Fat) with TOTAL and TARGET rows
+- Added formatted plan date display
+- Replaced "% Daily Values" section with FDA `<NutritionLabel>` component
+- Added per-meal serving size and match score in schedule table
+- Replaced all emoji with SVG icons (slots, header, close button, download button)
+- Added `<AllergenBadge>` components for allergen display
+
+### Frontend — MealDatasheet Improvements
+- Replaced "% Daily Values" with FDA `<NutritionLabel>` component
+- Replaced emoji fallback with SVG slot icons
+- Replaced close button emoji with `<CloseIcon>` SVG
+- Replaced plain allergen pills with `<AllergenBadge>` components
+
+### Frontend — Navigation & Layout
+- Replaced all 5 nav emoji in AppLayout with SVG icon components
+- Icons inherit color via `currentColor` (emerald-600 active, gray-400 inactive)
+- Desktop nav shows icon+text; mobile shows icon above text
+
+### Frontend — Page Visual Improvements
+- **Home**: Hero section with Unsplash background image + dark gradient overlay
+- **Meals**: Category filter pills with SVG slot icons
+- **MealCard**: Unsplash category-specific fallback photos, calorie flame icon, info button icon
+- **PlanGenerator**: SVG slot icons, icon+text Info/Swap buttons
+- **Cart**: SVG CartIcon empty state, CloseIcon on remove buttons
+- **PlanSummaryBadge**: ClipboardIcon + CloseIcon SVGs
+- **Orders**: PackageIcon SVG empty state
+- **OrderTimeline**: SVG status icons per step (CreditCard, Check, Cooking, Package, Truck, Lock)
+- **WeightProjectionCard**: TrendUp/TrendDown/Scale SVG icons
+- **Login**: Unsplash background image with frosted glass overlay
+- **Onboarding**: TargetIcon SVG replacing target emoji
+
+### Frontend — PDF Generation
+- Added meal schedule table as first section in PDF
+- Replaced "% Daily Values" table with FDA-style nutrition label layout
+- Replaced emoji slot references with text labels (Breakfast, Lunch, etc.)
+
 ## 2026-02-22 — Cart Plan Context + Body Stats + Weight Projection
 
 ### Backend

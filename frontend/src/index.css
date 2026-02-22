@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+@utility font-fda-title {
+  font-family: 'Helvetica Neue', 'Arial Black', Arial, sans-serif;
+  font-weight: 900;
+}

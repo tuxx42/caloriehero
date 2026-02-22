@@ -16,7 +16,17 @@ The project has been completely rewritten from a Node.js/TypeScript Turborepo mo
 - **Payments**: Stripe PaymentIntents + webhooks
 - **Deployment**: Railway single-service (FastAPI serves API + static frontend) + Postgres add-on
 
-### Latest: Cart Plan Context + Body Stats + Weight Projection
+### Latest: Design Improvements — SVG Icons, FDA Nutrition Labels, Visual Polish
+- **SVG Icon Library**: 25+ icons (nav, slot, nutrient, UI) in `frontend/src/components/icons/Icons.tsx`
+- **FDA Nutrition Label**: `<NutritionLabel>` component mimicking official FDA format with %DV
+- **PlanDatasheet overhaul**: Meal schedule table, formatted dates, FDA label, per-meal macro details
+- **MealDatasheet**: FDA label, SVG icons, AllergenBadge components
+- **All pages updated**: emoji replaced with SVG icons throughout the app
+- **Login & Home**: Unsplash background images with gradient/glass overlays
+- **OrderTimeline**: SVG status icons per step
+- **PDF updated**: Meal schedule table, FDA-style nutrition section
+
+### Previous: Cart Plan Context + Body Stats + Weight Projection
 - **Body stats persistence**: 5 new nullable columns on UserProfile (weight_kg, height_cm, age, gender, activity_level)
   - Backend schemas with validation (gender: male/female, activity_level: sedentary-very_active)
   - Onboarding wizard sends body stats alongside macro targets

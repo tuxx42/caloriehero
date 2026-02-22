@@ -16,6 +16,7 @@ import {
   DIETARY_OPTIONS,
   FITNESS_GOALS,
 } from "../utils/constants";
+import { TargetIcon } from "../components/icons/Icons";
 
 const STEPS = ["Welcome", "Goal", "Stats", "Review", "Preferences"];
 
@@ -132,7 +133,9 @@ export function OnboardingPage() {
           {/* Step 0: Welcome */}
           {step === 0 && (
             <div className="text-center space-y-6">
-              <div className="text-6xl">🎯</div>
+              <div className="flex justify-center">
+                <TargetIcon className="w-16 h-16 text-emerald-500" />
+              </div>
               <h1 className="text-2xl font-bold text-gray-900">
                 Let's personalize your nutrition
               </h1>

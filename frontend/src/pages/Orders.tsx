@@ -4,6 +4,7 @@ import { listOrders } from "../api/endpoints/orders";
 import type { Order } from "../api/types";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { StatusBadge } from "../components/common/StatusBadge";
+import { PackageIcon } from "../components/icons/Icons";
 
 export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -21,7 +22,9 @@ export function OrdersPage() {
   if (orders.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-5xl mb-4">📦</p>
+        <div className="flex justify-center mb-4">
+          <PackageIcon className="w-16 h-16 text-gray-300" />
+        </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
           No orders yet
         </h2>

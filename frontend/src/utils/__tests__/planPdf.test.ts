@@ -7,6 +7,9 @@ const mockDoc = {
   setFont: vi.fn(),
   setTextColor: vi.fn(),
   setFillColor: vi.fn(),
+  setDrawColor: vi.fn(),
+  setLineWidth: vi.fn(),
+  line: vi.fn(),
   text: vi.fn(),
   rect: vi.fn(),
   addImage: vi.fn(),
@@ -189,29 +192,28 @@ describe("generatePlanPdf", () => {
     expect(textCalls.some((c: unknown[]) => c[0] === "92% match")).toBe(true);
   });
 
-  it("renders 3 rect calls for macro split bar", async () => {
+  it("renders rect calls for macro split bar", async () => {
     await callGenerate();
-    // rect is called for: 3 macro split segments + calorie contribution bars (4) + legend dots (4)
-    // The first 3 rect calls after title are the macro split bar
+    // rect is called for: 3 macro split segments + FDA black bar + calorie contribution bars + legend dots
     const rectCalls = mockDoc.rect.mock.calls;
-    // At minimum 3 for macro split
+    // At minimum 3 macro split + 1 FDA bar + 4 calorie bars = 8+
     expect(rectCalls.length).toBeGreaterThanOrEqual(3);
-    // Check fill style "F" on the first 3
-    expect(rectCalls[0][4]).toBe("F");
-    expect(rectCalls[1][4]).toBe("F");
-    expect(rectCalls[2][4]).toBe("F");
+    // All rect calls use fill style "F"
+    for (const call of rectCalls) {
+      expect(call[4]).toBe("F");
+    }
   });
 
-  it("makes 2 autoTable calls (daily values + nutrition breakdown)", async () => {
+  it("makes 1 autoTable call for meal schedule", async () => {
     await callGenerate();
-    expect(mockAutoTable).toHaveBeenCalledTimes(2);
-    // First table: daily values
+    expect(mockAutoTable).toHaveBeenCalledTimes(1);
+    // First table: meal schedule
     const firstCall = mockAutoTable.mock.calls[0][1];
-    expect(firstCall.head[0]).toEqual(["Nutrient", "Actual", "%"]);
-    // Second table: nutrition breakdown
-    const secondCall = mockAutoTable.mock.calls[1][1];
-    expect(secondCall.head[0]).toContain("Total");
-    expect(secondCall.head[0]).toContain("Target");
+    expect(firstCall.head[0]).toEqual(["Meal", "Item", "Cal", "Pro", "Carb", "Fat"]);
+    // Includes TOTAL and TARGET rows in the body
+    const body = firstCall.body;
+    expect(body[body.length - 2][0]).toBe("TOTAL");
+    expect(body[body.length - 1][0]).toBe("TARGET");
   });
 
   it("adds image when radar data URL is provided", async () => {

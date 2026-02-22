@@ -1,4 +1,6 @@
 import type { Meal } from "../../api/types";
+import { SLOT_ICONS, SunriseIcon, FlameIcon, InfoIcon } from "../icons/Icons";
+import { CATEGORY_FALLBACKS } from "../../utils/images";
 
 interface MealCardProps {
   meal: Meal;
@@ -9,29 +11,23 @@ interface MealCardProps {
 }
 
 export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCardProps) {
+  const imageSrc = meal.image_url || CATEGORY_FALLBACKS[meal.category];
+  const SlotIconComp = SLOT_ICONS[meal.category] ?? SunriseIcon;
+
   return (
     <div
       className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => onSelect?.(meal)}
     >
-      {meal.image_url && (
+      {imageSrc ? (
         <img
-          src={meal.image_url}
+          src={imageSrc}
           alt={meal.name}
           className="w-full h-40 object-cover"
         />
-      )}
-      {!meal.image_url && (
+      ) : (
         <div className="w-full h-40 bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
-          <span className="text-4xl">
-            {meal.category === "breakfast"
-              ? "🌅"
-              : meal.category === "lunch"
-                ? "☀️"
-                : meal.category === "dinner"
-                  ? "🌙"
-                  : "🍎"}
-          </span>
+          <SlotIconComp className="w-12 h-12 text-emerald-300" />
         </div>
       )}
       <div className="p-4">
@@ -50,7 +46,10 @@ export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCar
         </p>
         <div className="grid grid-cols-4 gap-1 text-center text-xs mb-3">
           <div>
-            <div className="font-semibold text-gray-900">{Math.round(meal.calories)}</div>
+            <div className="flex items-center justify-center gap-0.5">
+              <FlameIcon className="w-3 h-3 text-gray-400" />
+              <span className="font-semibold text-gray-900">{Math.round(meal.calories)}</span>
+            </div>
             <div className="text-gray-400">cal</div>
           </div>
           <div>
@@ -75,8 +74,9 @@ export function MealCard({ meal, onSelect, onAddToCart, onInfo, score }: MealCar
                   e.stopPropagation();
                   onInfo(meal);
                 }}
-                className="px-3 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
               >
+                <InfoIcon className="w-3.5 h-3.5" />
                 Info
               </button>
             )}

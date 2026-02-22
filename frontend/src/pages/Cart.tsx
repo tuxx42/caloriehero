@@ -5,6 +5,7 @@ import { useCartStore, type CartItem } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
 import { calculateWeightProjection } from "../utils/weightProjection";
+import { CartIcon, CloseIcon } from "../components/icons/Icons";
 
 function CartItemRow({
   item,
@@ -59,9 +60,9 @@ function CartItemRow({
         </button>
         <button
           onClick={() => onRemove(item.id)}
-          className="ml-2 text-red-400 hover:text-red-600 text-sm"
+          className="ml-2 text-red-400 hover:text-red-600"
         >
-          ✕
+          <CloseIcon className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -107,7 +108,9 @@ export function CartPage() {
   if (items.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-5xl mb-4">🛒</p>
+        <div className="flex justify-center mb-4">
+          <CartIcon className="w-16 h-16 text-gray-300" />
+        </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
           Your cart is empty
         </h2>

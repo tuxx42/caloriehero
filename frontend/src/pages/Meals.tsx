@@ -8,13 +8,15 @@ import { MealDatasheet } from "../components/meals/MealDatasheet";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { useCartStore } from "../stores/cart";
 import { useProfileStore } from "../stores/profile";
+import { SunriseIcon, SunIcon, MoonIcon, AppleIcon } from "../components/icons/Icons";
+import type { SVGProps } from "react";
 
-const CATEGORIES = [
+const CATEGORIES: { value: string; label: string; Icon?: React.FC<SVGProps<SVGSVGElement>> }[] = [
   { value: "", label: "All" },
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "snack", label: "Snack" },
+  { value: "breakfast", label: "Breakfast", Icon: SunriseIcon },
+  { value: "lunch", label: "Lunch", Icon: SunIcon },
+  { value: "dinner", label: "Dinner", Icon: MoonIcon },
+  { value: "snack", label: "Snack", Icon: AppleIcon },
 ];
 
 export function MealsPage() {
@@ -56,12 +58,13 @@ export function MealsPage() {
           <button
             key={cat.value}
             onClick={() => setCategory(cat.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               category === cat.value
                 ? "bg-emerald-500 text-white"
                 : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
             }`}
           >
+            {cat.Icon && <cat.Icon className="w-4 h-4" />}
             {cat.label}
           </button>
         ))}

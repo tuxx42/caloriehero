@@ -16,6 +16,13 @@ const SLOT_COLORS: Record<string, [number, number, number]> = {
   snack: [244, 63, 94],       // rose-500
 };
 
+const SLOT_LABELS: Record<string, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
+};
+
 interface GeneratePlanPdfOptions {
   plan: DailyPlan;
   radarChartDataUrl?: string;
@@ -65,7 +72,69 @@ export async function generatePlanPdf({
   );
   y += 15;
 
-  // --- 2. Radar chart ---
+  // --- 2. Meal Schedule Table (NEW) ---
+  ensureSpace(50);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(17, 24, 39);
+  doc.text("Meal Schedule", MARGIN, y + 5);
+  y += 8;
+
+  const scheduleHead = ["Meal", "Item", "Cal", "Pro", "Carb", "Fat"];
+  const scheduleBody = plan.items.map((item) => [
+    SLOT_LABELS[item.slot] ?? item.slot,
+    item.meal_name,
+    `${Math.round(item.meal.calories)}`,
+    `${Math.round(item.meal.protein)}g`,
+    `${Math.round(item.meal.carbs)}g`,
+    `${Math.round(item.meal.fat)}g`,
+  ]);
+
+  // Add totals and target rows
+  scheduleBody.push([
+    "TOTAL",
+    "",
+    `${Math.round(actual.calories)}`,
+    `${Math.round(actual.protein)}g`,
+    `${Math.round(actual.carbs)}g`,
+    `${Math.round(actual.fat)}g`,
+  ]);
+  scheduleBody.push([
+    "TARGET",
+    "",
+    `${Math.round(target.calories)}`,
+    `${Math.round(target.protein)}g`,
+    `${Math.round(target.carbs)}g`,
+    `${Math.round(target.fat)}g`,
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: MARGIN, right: MARGIN },
+    head: [scheduleHead],
+    body: scheduleBody,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: {
+      fillColor: [16, 185, 129],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    bodyStyles: { textColor: [55, 65, 81] },
+    didParseCell(data) {
+      // Bold the TOTAL and TARGET rows
+      if (data.section === "body" && data.row.index >= plan.items.length) {
+        data.cell.styles.fontStyle = "bold";
+        if (data.row.index === plan.items.length) {
+          data.cell.styles.fillColor = [243, 244, 246];
+        }
+      }
+    },
+    theme: "grid",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // --- 3. Radar chart ---
   if (radarChartDataUrl) {
     ensureSpace(65);
     const chartWidth = 55;
@@ -74,7 +143,7 @@ export async function generatePlanPdf({
     y += chartWidth + 5;
   }
 
-  // --- 3. Macro split bar ---
+  // --- 4. Macro split bar ---
   ensureSpace(20);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
@@ -114,7 +183,7 @@ export async function generatePlanPdf({
   );
   y += 8;
 
-  // --- 4. Calorie & macro gap ---
+  // --- 5. Calorie & macro gap ---
   ensureSpace(30);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
@@ -170,108 +239,77 @@ export async function generatePlanPdf({
   });
   y += Math.ceil(macroGaps.length / 2) * 7 + 5;
 
-  // --- 5. % Daily Values ---
-  ensureSpace(50);
+  // --- 6. Nutrition Facts (FDA-style) ---
+  ensureSpace(60);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(17, 24, 39);
-  doc.text("% Daily Values", MARGIN, y + 5);
+  doc.text("Nutrition Facts", MARGIN, y + 5);
   y += 8;
+
+  // Black top bar
+  doc.setFillColor(0, 0, 0);
+  doc.rect(MARGIN, y, CONTENT_WIDTH, 2, "F");
+  y += 4;
 
   const totalSugar = plan.items.reduce((s, i) => s + (i.meal.sugar ?? 0), 0);
-  const dailyValues = [
-    { label: "Calories", actual: actual.calories, unit: "kcal", target: target.calories },
-    { label: "Protein", actual: actual.protein, unit: "g", target: target.protein },
-    { label: "Carbs", actual: actual.carbs, unit: "g", target: target.carbs },
-    { label: "Fat", actual: actual.fat, unit: "g", target: target.fat },
-    { label: "Fiber", actual: totalFiber, unit: "g", target: FIBER_RDV },
-    { label: "Sugar", actual: totalSugar, unit: "g", target: SUGAR_RDV },
+  const fdaRows = [
+    { label: "Total Fat", value: `${Math.round(actual.fat)}g`, dv: Math.round((actual.fat / target.fat) * 100), bold: true },
+    { label: "Total Carbohydrate", value: `${Math.round(actual.carbs)}g`, dv: Math.round((actual.carbs / target.carbs) * 100), bold: true },
+    { label: "  Dietary Fiber", value: `${Math.round(totalFiber)}g`, dv: Math.round((totalFiber / FIBER_RDV) * 100), bold: false },
+    { label: "  Total Sugars", value: `${Math.round(totalSugar)}g`, dv: Math.round((totalSugar / SUGAR_RDV) * 100), bold: false },
+    { label: "Protein", value: `${Math.round(actual.protein)}g`, dv: Math.round((actual.protein / target.protein) * 100), bold: true },
   ];
 
-  autoTable(doc, {
-    startY: y,
-    margin: { left: MARGIN, right: MARGIN },
-    head: [["Nutrient", "Actual", "%"]],
-    body: dailyValues.map((r) => [
-      r.label,
-      `${Math.round(r.actual)} ${r.unit}`,
-      `${Math.round((r.actual / r.target) * 100)}%`,
-    ]),
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: {
-      fillColor: [243, 244, 246],
-      textColor: [55, 65, 81],
-      fontStyle: "bold",
-    },
-    theme: "grid",
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 5;
-
-  // --- 6. Nutrition breakdown ---
-  ensureSpace(50);
-  doc.setFontSize(12);
+  // Calories row
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text("Nutrition Breakdown", MARGIN, y + 5);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Calories", MARGIN + 2, y + 4);
+  doc.setFontSize(14);
+  doc.text(`${Math.round(actual.calories)}`, MARGIN + CONTENT_WIDTH - 2, y + 4, { align: "right" });
+  y += 7;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+  y += 1;
+
+  // %DV header
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.text("% Daily Value*", MARGIN + CONTENT_WIDTH - 2, y + 3, { align: "right" });
+  y += 5;
+
+  for (const row of fdaRows) {
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.1);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", row.bold ? "bold" : "normal");
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${row.label} ${row.value}`, MARGIN + 2, y + 3.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${row.dv}%`, MARGIN + CONTENT_WIDTH - 2, y + 3.5, { align: "right" });
+    y += 5;
+  }
+
+  // Bottom rule
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+  y += 3;
+
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(107, 114, 128);
+  doc.text(
+    `* Percent Daily Values are based on a ${Math.round(target.calories)} calorie diet.`,
+    MARGIN + 2,
+    y + 2,
+  );
   y += 8;
-
-  const nutrients = [
-    { key: "calories", label: "Calories", unit: "kcal", target: target.calories },
-    { key: "protein", label: "Protein", unit: "g", target: target.protein },
-    { key: "carbs", label: "Carbs", unit: "g", target: target.carbs },
-    { key: "fat", label: "Fat", unit: "g", target: target.fat },
-    { key: "fiber", label: "Fiber", unit: "g", target: FIBER_RDV },
-    { key: "sugar", label: "Sugar", unit: "g", target: SUGAR_RDV },
-  ] as const;
-
-  const breakdownHead = [
-    "",
-    ...plan.items.map((i) =>
-      i.meal_name.length > 10 ? i.meal_name.slice(0, 10) + "..." : i.meal_name,
-    ),
-    "Total",
-    "Target",
-    "%",
-  ];
-
-  const breakdownBody = nutrients.map((nut) => {
-    const perMeal = plan.items.map((item) => {
-      const val = item.meal[nut.key] ?? 0;
-      return `${Math.round(val)}${nut.unit === "kcal" ? "" : nut.unit}`;
-    });
-    const total =
-      nut.key === "calories" ? actual.calories
-      : nut.key === "protein" ? actual.protein
-      : nut.key === "carbs" ? actual.carbs
-      : nut.key === "fat" ? actual.fat
-      : nut.key === "fiber" ? totalFiber
-      : totalSugar;
-    const pct = Math.round((total / nut.target) * 100);
-    return [
-      nut.label,
-      ...perMeal,
-      `${Math.round(total)}${nut.unit === "kcal" ? "" : nut.unit}`,
-      `${Math.round(nut.target)}${nut.unit === "kcal" ? "" : nut.unit}`,
-      `${pct}%`,
-    ];
-  });
-
-  autoTable(doc, {
-    startY: y,
-    margin: { left: MARGIN, right: MARGIN },
-    head: [breakdownHead],
-    body: breakdownBody,
-    styles: { fontSize: 7, cellPadding: 1.5 },
-    headStyles: {
-      fillColor: [243, 244, 246],
-      textColor: [55, 65, 81],
-      fontStyle: "bold",
-    },
-    theme: "grid",
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 5;
 
   // --- 7. Calorie contribution bar ---
   ensureSpace(20);
@@ -303,7 +341,7 @@ export async function generatePlanPdf({
     doc.rect(legendX, y, 3, 3, "F");
     doc.setTextColor(107, 114, 128);
     doc.setFont("helvetica", "normal");
-    const label = `${item.slot.charAt(0).toUpperCase() + item.slot.slice(1)} ${pct}%`;
+    const label = `${SLOT_LABELS[item.slot] ?? item.slot} ${pct}%`;
     doc.text(label, legendX + 4, y + 2.5);
     legendX += doc.getTextWidth(label) + 8;
   }
@@ -335,7 +373,7 @@ export async function generatePlanPdf({
     for (const [allergen, slots] of allergenMap) {
       ensureSpace(6);
       const slotNames = slots
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .map((s) => SLOT_LABELS[s] ?? (s.charAt(0).toUpperCase() + s.slice(1)))
         .join(", ");
       doc.text(
         `${formatTag(allergen)} (${slotNames})`,

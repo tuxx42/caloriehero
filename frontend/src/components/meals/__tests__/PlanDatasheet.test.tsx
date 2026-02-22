@@ -164,6 +164,27 @@ describe("PlanDatasheet", () => {
     expect(screen.getByText("92% match")).toBeInTheDocument();
   });
 
+  it("renders formatted plan date", () => {
+    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
+    // Date "2026-02-22" should be formatted as a readable date
+    expect(screen.getByText(/February 22, 2026/)).toBeInTheDocument();
+  });
+
+  it("renders meal schedule table with all meals", () => {
+    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
+    expect(screen.getByText("Meal Schedule")).toBeInTheDocument();
+    const table = screen.getByTestId("meal-schedule-table");
+    expect(table).toBeInTheDocument();
+    // Check meal names appear
+    expect(screen.getByText("Oatmeal Bowl")).toBeInTheDocument();
+    expect(screen.getByText("Grilled Chicken")).toBeInTheDocument();
+    expect(screen.getByText("Salmon Plate")).toBeInTheDocument();
+    expect(screen.getByText("Protein Bar")).toBeInTheDocument();
+    // Check TOTAL and TARGET rows
+    expect(screen.getByText("TOTAL")).toBeInTheDocument();
+    expect(screen.getByText("TARGET")).toBeInTheDocument();
+  });
+
   it("renders radar chart SVG", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
     expect(
@@ -174,8 +195,6 @@ describe("PlanDatasheet", () => {
   it("shows macro split percentages", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
     expect(screen.getByText("Macro Split")).toBeInTheDocument();
-    // Protein: 127*4=508, Carbs: 145*4=580, Fat: 53*9=477 → total=1565
-    // P: 32%, C: 37%, F: 31% (rounded, with carbsPct = 100-32-31=37)
     const proteinPct = Math.round((127 * 4 / (127 * 4 + 145 * 4 + 53 * 9)) * 100);
     const fatPct = Math.round((53 * 9 / (127 * 4 + 145 * 4 + 53 * 9)) * 100);
     const carbsPct = 100 - proteinPct - fatPct;
@@ -187,7 +206,6 @@ describe("PlanDatasheet", () => {
   it("shows calorie gap (under target)", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
     expect(screen.getByText("Calorie & Macro Gap")).toBeInTheDocument();
-    // 1530 - 2000 = -470
     expect(screen.getByText("-470 kcal")).toBeInTheDocument();
     expect(screen.getByText("under target")).toBeInTheDocument();
   });
@@ -204,69 +222,32 @@ describe("PlanDatasheet", () => {
 
   it("shows macro gap deltas", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    // Protein: 127-150 = -23g
     expect(screen.getByText("-23g")).toBeInTheDocument();
-    // Carbs: 145-200 = -55g
     expect(screen.getByText("-55g")).toBeInTheDocument();
-    // Fat: 53-65 = -12g
     expect(screen.getByText("-12g")).toBeInTheDocument();
-    // Fiber: (3+5+4+2)=14 - 28 = -14g
     expect(screen.getByText("-14g")).toBeInTheDocument();
   });
 
-  it("shows aggregated % daily values", () => {
+  it("shows FDA Nutrition Facts label", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    expect(screen.getByText("% Daily Values")).toBeInTheDocument();
-    // Calories: 1530/2000 = 77%
-    expect(screen.getByText("(77%)")).toBeInTheDocument();
-    // Protein: 127/150 = 85%
-    expect(screen.getByText("(85%)")).toBeInTheDocument();
-  });
-
-  it("shows nutrition specs table with per-meal columns and totals", () => {
-    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    expect(screen.getByText("Nutrition Breakdown")).toBeInTheDocument();
-    const table = screen.getByTestId("nutrition-table");
-    expect(table).toBeInTheDocument();
-    // Check Total column header
-    expect(screen.getByText("Total")).toBeInTheDocument();
-    // Check Target column header
-    expect(screen.getByText("Target")).toBeInTheDocument();
-  });
-
-  it("shows % column with color coding", () => {
-    render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    const table = screen.getByTestId("nutrition-table");
-    // Protein: 85% → amber (70-89)
-    // Find all cells with "85%" in the table
-    const cells = table.querySelectorAll("td");
-    const pctCells = Array.from(cells).filter(
-      (c) => c.textContent === "85%",
-    );
-    expect(pctCells.length).toBeGreaterThan(0);
-    expect(pctCells[0].className).toContain("amber");
+    expect(screen.getByTestId("nutrition-label")).toBeInTheDocument();
   });
 
   it("shows calorie contribution bar with slot labels", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
     expect(screen.getByText("Calorie Contribution")).toBeInTheDocument();
-    // Check slot labels exist (use getAllByText since slot names appear in allergen attribution too)
-    expect(screen.getAllByText(/Breakfast/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Lunch/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Dinner/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Snack/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/breakfast/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/lunch/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/dinner/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/snack/i).length).toBeGreaterThan(0);
   });
 
   it("shows combined allergens with meal attribution", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
     expect(screen.getByText("Allergens")).toBeInTheDocument();
-    // Dairy appears in breakfast, lunch, snack
     expect(screen.getByText("(Breakfast, Lunch, Snack)")).toBeInTheDocument();
-    // Wheat appears in lunch
     expect(screen.getByText("(Lunch)")).toBeInTheDocument();
-    // Fish appears in dinner
     expect(screen.getByText("(Dinner)")).toBeInTheDocument();
-    // Soy appears in snack
     expect(screen.getByText("(Snack)")).toBeInTheDocument();
   });
 
@@ -280,7 +261,6 @@ describe("PlanDatasheet", () => {
 
   it("shows total price", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    // Total: 120+200+250+80 + 40 extra = 690
     expect(screen.getByText("฿690")).toBeInTheDocument();
   });
 
@@ -290,9 +270,17 @@ describe("PlanDatasheet", () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it("calls onClose when X button is clicked", () => {
+  it("calls onClose when X button (SVG close icon) is clicked", () => {
     render(<PlanDatasheet plan={mockPlan} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByText("✕"));
+    // Close icon is now an SVG button - find the first button element
+    const buttons = screen.getAllByRole("button");
+    // The X/close button is the one in the header area (not the "Close" text button or PDF button)
+    const closeIconBtn = buttons.find((btn) => {
+      const svg = btn.querySelector("svg");
+      return svg && btn.textContent === "";
+    });
+    expect(closeIconBtn).toBeDefined();
+    fireEvent.click(closeIconBtn!);
     expect(mockOnClose).toHaveBeenCalled();
   });
 

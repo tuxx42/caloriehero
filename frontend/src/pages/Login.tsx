@@ -10,18 +10,26 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white flex items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      {/* Background image */}
+      <img
+        src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      <div className="relative w-full max-w-sm text-center z-10">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-emerald-600 mb-2">
+          <h1 className="text-4xl font-bold text-white mb-2">
             CalorieHero
           </h1>
-          <p className="text-gray-500">
+          <p className="text-gray-200">
             Macro-matched meals delivered to your door
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 space-y-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">
               Welcome

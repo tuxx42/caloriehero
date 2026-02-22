@@ -1,5 +1,8 @@
 import type { Meal, MacroTargets } from "../../api/types";
 import { RadarChart } from "../common/RadarChart";
+import { NutritionLabel } from "../common/NutritionLabel";
+import { AllergenBadge } from "../common/AllergenBadge";
+import { CloseIcon, SLOT_ICONS, SunriseIcon } from "../icons/Icons";
 
 interface MealDatasheetProps {
   meal: Meal;
@@ -7,25 +10,19 @@ interface MealDatasheetProps {
   onClose: () => void;
 }
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  breakfast: "🌅",
-  lunch: "☀️",
-  dinner: "🌙",
-  snack: "🍎",
-};
-
-interface DailyValueRow {
-  label: string;
-  amount: number;
-  unit: string;
-  target: number;
-}
+const FIBER_RDV = 28;
+const SUGAR_RDV = 50;
 
 function formatTag(tag: string): string {
   return tag
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+function SlotIcon({ slot, className }: { slot: string; className?: string }) {
+  const IconComp = SLOT_ICONS[slot] ?? SunriseIcon;
+  return <IconComp className={className} />;
 }
 
 export function MealDatasheet({
@@ -47,32 +44,8 @@ export function MealDatasheet({
     targetMacros.protein,
     targetMacros.carbs,
     targetMacros.fat,
-    28, // RDV for fiber
-    50, // RDV for sugar
-  ];
-
-  const dailyValues: DailyValueRow[] = [
-    {
-      label: "Calories",
-      amount: meal.calories,
-      unit: "kcal",
-      target: targetMacros.calories,
-    },
-    {
-      label: "Protein",
-      amount: meal.protein,
-      unit: "g",
-      target: targetMacros.protein,
-    },
-    {
-      label: "Carbs",
-      amount: meal.carbs,
-      unit: "g",
-      target: targetMacros.carbs,
-    },
-    { label: "Fat", amount: meal.fat, unit: "g", target: targetMacros.fat },
-    { label: "Fiber", amount: meal.fiber ?? 0, unit: "g", target: 28 },
-    { label: "Sugar", amount: meal.sugar ?? 0, unit: "g", target: 50 },
+    FIBER_RDV,
+    SUGAR_RDV,
   ];
 
   return (
@@ -89,9 +62,7 @@ export function MealDatasheet({
                 className="w-14 h-14 rounded-xl object-cover"
               />
             ) : (
-              <span className="text-3xl">
-                {CATEGORY_EMOJI[meal.category] ?? "🍽️"}
-              </span>
+              <SlotIcon slot={meal.category} className="w-10 h-10 text-gray-400" />
             )}
             <div>
               <h2 className="text-lg font-bold text-gray-900">{meal.name}</h2>
@@ -107,9 +78,9 @@ export function MealDatasheet({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-400 hover:text-gray-600 p-1"
           >
-            ✕
+            <CloseIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -122,30 +93,29 @@ export function MealDatasheet({
           labels={radarLabels}
         />
 
-        {/* % Daily Values */}
+        {/* FDA Nutrition Label */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            % Daily Values
+            Nutrition Facts
           </h3>
-          <div className="divide-y divide-gray-100">
-            {dailyValues.map((row) => {
-              const pct = Math.round((row.amount / row.target) * 100);
-              return (
-                <div
-                  key={row.label}
-                  className="flex justify-between py-1.5 text-sm"
-                >
-                  <span className="text-gray-700">{row.label}</span>
-                  <span className="text-gray-900 font-medium">
-                    {Math.round(row.amount)}
-                    {row.unit}{" "}
-                    <span className="text-gray-400 font-normal">
-                      ({pct}%)
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
+          <div className="flex justify-center">
+            <NutritionLabel
+              calories={meal.calories}
+              protein={meal.protein}
+              carbs={meal.carbs}
+              fat={meal.fat}
+              fiber={meal.fiber ?? undefined}
+              sugar={meal.sugar ?? undefined}
+              servingSize={meal.serving_size}
+              targets={{
+                calories: targetMacros.calories,
+                protein: targetMacros.protein,
+                carbs: targetMacros.carbs,
+                fat: targetMacros.fat,
+                fiber: FIBER_RDV,
+                sugar: SUGAR_RDV,
+              }}
+            />
           </div>
         </div>
 
@@ -157,12 +127,7 @@ export function MealDatasheet({
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {meal.allergens.map((a) => (
-                <span
-                  key={a}
-                  className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-medium"
-                >
-                  {formatTag(a)}
-                </span>
+                <AllergenBadge key={a} allergen={a} />
               ))}
             </div>
           </div>

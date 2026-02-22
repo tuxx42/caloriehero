@@ -76,7 +76,7 @@ describe("MealDatasheet", () => {
     expect(screen.getByRole("img", { name: "Macro radar chart" })).toBeInTheDocument();
   });
 
-  it("shows % daily value rows for each macro", () => {
+  it("shows FDA Nutrition Facts label with %DV", () => {
     render(
       <MealDatasheet
         meal={mockMeal}
@@ -84,16 +84,11 @@ describe("MealDatasheet", () => {
         onClose={mockOnClose}
       />,
     );
-    expect(screen.getByText("% Daily Values")).toBeInTheDocument();
-    // Check that percentage labels appear
-    // Calories: 420/2000 = 21%
-    expect(screen.getByText("(21%)")).toBeInTheDocument();
-    // Protein: 48/150 = 32%
-    expect(screen.getByText("(32%)")).toBeInTheDocument();
-    // Carbs: 32/200 = 16%
-    expect(screen.getByText("(16%)")).toBeInTheDocument();
-    // Fat: 10/65 = 15%
-    expect(screen.getByText("(15%)")).toBeInTheDocument();
+    expect(screen.getByTestId("nutrition-label")).toBeInTheDocument();
+    // Two "Nutrition Facts" headings: section h3 + FDA label h3
+    expect(screen.getAllByText("Nutrition Facts").length).toBe(2);
+    // Calories displayed in the label
+    expect(screen.getByText("420")).toBeInTheDocument();
   });
 
   it("shows allergen badges", () => {
@@ -172,7 +167,7 @@ describe("MealDatasheet", () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it("calls onClose when X button is clicked", () => {
+  it("calls onClose when X button (SVG close icon) is clicked", () => {
     render(
       <MealDatasheet
         meal={mockMeal}
@@ -180,7 +175,10 @@ describe("MealDatasheet", () => {
         onClose={mockOnClose}
       />,
     );
-    fireEvent.click(screen.getByText("✕"));
+    // Close icon is now an SVG, find the button that contains it
+    const closeButtons = screen.getAllByRole("button");
+    // The X button is the first button (top-right)
+    fireEvent.click(closeButtons[0]);
     expect(mockOnClose).toHaveBeenCalled();
   });
 
