@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   generateMultiDayPlan,
-  generatePlan,
   recalculatePlan,
 } from "../api/endpoints/matching";
 import type { DailyPlan, MultiDayPlan, PlanItem } from "../api/types";
@@ -18,6 +17,7 @@ import { useProfileStore } from "../stores/profile";
 import type { BodyStats } from "../utils/tdee";
 import { generatePlanPdf } from "../utils/planPdf";
 import { SLOT_ICONS, SunriseIcon, InfoIcon, SwapIcon, FlameIcon, ProteinIcon, GrainIcon, DropletIcon, DownloadIcon } from "../components/icons/Icons";
+import { CATEGORY_FALLBACKS } from "../utils/images";
 
 function formatExtra(value: number, label: string): string | null {
   if (value === 0) return null;
@@ -47,14 +47,23 @@ function SlotCard({
   ].filter(Boolean);
 
   const SlotIconComp = SLOT_ICONS[item.slot] ?? SunriseIcon;
+  const thumbSrc = item.meal?.image_url || CATEGORY_FALLBACKS[item.slot];
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-stone-100 overflow-hidden transition-all duration-200">
       <div className="p-4">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-            <SlotIconComp className="w-5 h-5 text-emerald-600" />
-          </div>
+          {thumbSrc ? (
+            <img
+              src={thumbSrc}
+              alt={item.meal_name}
+              className="w-12 h-12 rounded-xl object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+              <SlotIconComp className="w-6 h-6 text-emerald-300" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -209,8 +218,6 @@ function SlotCard({
 }
 
 export function PlanGeneratorPage() {
-  const [mode, setMode] = useState<"single" | "multi">("single");
-  const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [multiDayPlan, setMultiDayPlan] = useState<MultiDayPlan | null>(null);
   const [activeDay, setActiveDay] = useState(1);
   const [numDays, setNumDays] = useState(7);
@@ -249,16 +256,9 @@ export function PlanGeneratorPage() {
     setLoading(true);
     setError(null);
     try {
-      if (mode === "single") {
-        const result = await generatePlan();
-        setPlan(result);
-        setMultiDayPlan(null);
-      } else {
-        const result = await generateMultiDayPlan(numDays);
-        setMultiDayPlan(result);
-        setPlan(null);
-        setActiveDay(1);
-      }
+      const result = await generateMultiDayPlan(numDays);
+      setMultiDayPlan(result);
+      setActiveDay(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate plan");
     } finally {
@@ -266,14 +266,12 @@ export function PlanGeneratorPage() {
     }
   };
 
-  // Get the currently displayed plan (single-day or active day from multi)
+  // Get the currently displayed day from multi-day plan
   const activePlan: DailyPlan | null =
-    mode === "single"
-      ? plan
-      : multiDayPlan?.plans[activeDay - 1] ?? null;
+    multiDayPlan?.plans[activeDay - 1] ?? null;
 
   const activeDayRepeatedIds: Set<string> =
-    mode === "multi" && multiDayPlan
+    multiDayPlan
       ? new Set(multiDayPlan.plans[activeDay - 1]?.repeated_meal_ids ?? [])
       : new Set();
 
@@ -289,10 +287,7 @@ export function PlanGeneratorPage() {
       );
       const recalculated = await recalculatePlan(newItems);
 
-      if (mode === "single") {
-        setPlan(recalculated);
-      } else if (multiDayPlan) {
-        // Update the active day in multi-day plan
+      if (multiDayPlan) {
         const updatedPlans = [...multiDayPlan.plans];
         const dayPlan = updatedPlans[activeDay - 1];
         updatedPlans[activeDay - 1] = {
@@ -313,54 +308,34 @@ export function PlanGeneratorPage() {
   };
 
   const handleAddPlanToCart = () => {
+    if (!multiDayPlan) return;
     const planId = crypto.randomUUID();
 
-    if (mode === "single" && plan) {
-      for (const item of plan.items) {
+    for (const dayPlan of multiDayPlan.plans) {
+      for (const item of dayPlan.items) {
         addItem(item.meal, {
           extraProtein: item.extra_protein,
           extraCarbs: item.extra_carbs,
           extraFat: item.extra_fat,
         }, planId);
       }
-      const ctx: PlanContext = {
-        id: planId,
-        planType: "single",
-        numDays: 1,
-        targetMacros: plan.target_macros,
-        dailySummaries: [
-          { day: 1, target_macros: plan.target_macros, actual_macros: plan.actual_macros },
-        ],
-        totalScore: plan.total_score,
-      };
-      addPlanContext(ctx);
-    } else if (multiDayPlan) {
-      for (const dayPlan of multiDayPlan.plans) {
-        for (const item of dayPlan.items) {
-          addItem(item.meal, {
-            extraProtein: item.extra_protein,
-            extraCarbs: item.extra_carbs,
-            extraFat: item.extra_fat,
-          }, planId);
-        }
-      }
-      const avgScore =
-        multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
-        multiDayPlan.plans.length;
-      const ctx: PlanContext = {
-        id: planId,
-        planType: "multi",
-        numDays: multiDayPlan.days,
-        targetMacros: multiDayPlan.plans[0].target_macros,
-        dailySummaries: multiDayPlan.plans.map((p) => ({
-          day: p.day,
-          target_macros: p.target_macros,
-          actual_macros: p.actual_macros,
-        })),
-        totalScore: avgScore,
-      };
-      addPlanContext(ctx);
     }
+    const avgScore =
+      multiDayPlan.plans.reduce((s, p) => s + p.total_score, 0) /
+      multiDayPlan.plans.length;
+    const ctx: PlanContext = {
+      id: planId,
+      planType: "multi",
+      numDays: multiDayPlan.days,
+      targetMacros: multiDayPlan.plans[0].target_macros,
+      dailySummaries: multiDayPlan.plans.map((p) => ({
+        day: p.day,
+        target_macros: p.target_macros,
+        actual_macros: p.actual_macros,
+      })),
+      totalScore: avgScore,
+    };
+    addPlanContext(ctx);
     navigate("/cart");
   };
 
@@ -370,78 +345,53 @@ export function PlanGeneratorPage() {
     try {
       await generatePlanPdf({
         plan: activePlan,
-        multiDayPlan: mode === "multi" ? multiDayPlan ?? undefined : undefined,
+        multiDayPlan: multiDayPlan ?? undefined,
         userProfile: profile ?? undefined,
         bodyStats,
-        numDays: mode === "multi" ? multiDayPlan?.days : 1,
+        numDays: multiDayPlan?.days,
       });
     } finally {
       setDownloadingPdf(false);
     }
   };
 
-  const planTotalPrice =
-    mode === "single" && plan
-      ? plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
-        plan.total_extra_price
-      : multiDayPlan?.total_price ?? 0;
+  const planTotalPrice = multiDayPlan?.total_price ?? 0;
 
-  const hasGenerated =
-    (mode === "single" && plan !== null) ||
-    (mode === "multi" && multiDayPlan !== null);
+  const hasGenerated = multiDayPlan !== null;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="text-center animate-fade-in">
         <h1 className="font-display text-2xl text-stone-900 mb-1">
-          {mode === "single" ? "Daily Meal Plan" : `${numDays}-Day Meal Plan`}
+          {numDays}-Day Meal Plan
         </h1>
         <p className="text-sm text-stone-500">
           AI-matched meals to hit your macro targets
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex bg-stone-100 rounded-xl p-1">
-        <button
-          onClick={() => setMode("single")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            mode === "single"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          1 Day
-        </button>
-        <button
-          onClick={() => setMode("multi")}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            mode === "multi"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          Multi-Day
-        </button>
-      </div>
-
-      {/* Day count selector (multi mode) */}
-      {mode === "multi" && (
-        <div className="flex items-center gap-3">
-          <label htmlFor="num-days" className="text-sm text-stone-600">
-            Number of days:
+      {/* Day count slider */}
+      <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100">
+        <div className="flex justify-between items-center mb-2">
+          <label htmlFor="num-days" className="text-sm font-medium text-stone-700">
+            Plan duration
           </label>
-          <input
-            id="num-days"
-            type="number"
-            min={4}
-            max={30}
-            value={numDays}
-            onChange={(e) => setNumDays(Math.min(30, Math.max(4, Number(e.target.value))))}
-            className="w-20 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+          <span className="text-sm font-bold text-emerald-600">{numDays} days</span>
         </div>
-      )}
+        <input
+          id="num-days"
+          type="range"
+          min={5}
+          max={30}
+          value={numDays}
+          onChange={(e) => setNumDays(Number(e.target.value))}
+          className="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+        />
+        <div className="flex justify-between text-xs text-stone-400 mt-1">
+          <span>5 days</span>
+          <span>30 days</span>
+        </div>
+      </div>
 
       <button
         onClick={handleGenerate}
@@ -463,8 +413,8 @@ export function PlanGeneratorPage() {
         </div>
       )}
 
-      {/* Multi-day summary + repeat warning */}
-      {mode === "multi" && multiDayPlan && !loading && (
+      {/* Plan summary + repeat warning */}
+      {multiDayPlan && !loading && (
         <>
           <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-slide-up">
             <div className="flex justify-between items-center">
@@ -504,7 +454,7 @@ export function PlanGeneratorPage() {
           <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100 animate-fade-in">
             <div className="flex justify-between items-center">
               <h2 className="font-semibold text-stone-900">
-                {mode === "multi" ? `Day ${activeDay} Overview` : "Daily Overview"}
+                Day {activeDay} Overview
               </h2>
               <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-sm font-bold rounded-full">
                 {Math.round(activePlan.total_score * 100)}% match
@@ -593,9 +543,9 @@ export function PlanGeneratorPage() {
               plan={activePlan}
               inline
               bodyStats={bodyStats}
-              numDays={mode === "multi" ? multiDayPlan?.days : 1}
+              numDays={multiDayPlan?.days}
               dailyCalories={activePlan.actual_macros.calories}
-              multiDayPlan={mode === "multi" ? multiDayPlan ?? undefined : undefined}
+              multiDayPlan={multiDayPlan ?? undefined}
               userProfile={profile ?? undefined}
             />
           )}
@@ -613,13 +563,13 @@ export function PlanGeneratorPage() {
                 onClick={handleAddPlanToCart}
                 className="flex-1 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 shadow-sm"
               >
-                {mode === "multi" ? "Add All Days to Cart" : "Add Plan to Cart"}
+                Add Plan to Cart
               </button>
               <button
                 onClick={handleDownloadPdf}
                 disabled={downloadingPdf}
                 className="flex items-center gap-2 px-4 py-3 bg-stone-100 text-stone-700 font-semibold rounded-xl hover:bg-stone-200 active:bg-stone-300 transition-all duration-200 disabled:opacity-50"
-                title={mode === "multi" ? "Download full multi-day plan as PDF" : "Download plan as PDF"}
+                title="Download plan as PDF"
               >
                 <DownloadIcon className="w-4 h-4" />
                 {downloadingPdf ? "..." : "PDF"}

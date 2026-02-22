@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSlotAlternatives } from "../../api/endpoints/matching";
 import type { SlotAlternative } from "../../api/types";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { CATEGORY_FALLBACKS } from "../../utils/images";
 
 interface SlotSwapModalProps {
   slot: string;
@@ -81,30 +82,46 @@ export function SlotSwapModal({
 
         {!loading && !error && alternatives.length > 0 && (
           <div className="space-y-2">
-            {alternatives.map((alt) => (
-              <button
-                key={alt.meal_id}
-                onClick={() => onSwap(slot, alt.meal_id)}
-                className="w-full text-left bg-gray-50 hover:bg-emerald-50 rounded-xl p-3 transition-colors border border-transparent hover:border-emerald-200"
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-900 text-sm">
-                    {alt.meal_name}
-                  </span>
-                  <span className="text-xs text-emerald-600 font-medium">
-                    {Math.round(alt.score * 100)}% match
-                  </span>
-                </div>
-                {alt.meal && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {Math.round(alt.meal.calories)} cal ·{" "}
-                    {Math.round(alt.meal.protein)}g P ·{" "}
-                    {Math.round(alt.meal.carbs)}g C ·{" "}
-                    {Math.round(alt.meal.fat)}g F · ฿{alt.meal.price}
+            {alternatives.map((alt) => {
+              const thumbSrc = alt.meal?.image_url || CATEGORY_FALLBACKS[alt.category] || CATEGORY_FALLBACKS[slot];
+              return (
+                <button
+                  key={alt.meal_id}
+                  onClick={() => onSwap(slot, alt.meal_id)}
+                  className="w-full text-left bg-gray-50 hover:bg-emerald-50 rounded-xl p-3 transition-colors border border-transparent hover:border-emerald-200"
+                >
+                  <div className="flex items-center gap-3">
+                    {thumbSrc ? (
+                      <img
+                        src={thumbSrc}
+                        alt={alt.meal_name}
+                        className="w-12 h-12 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-emerald-50 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-900 text-sm truncate">
+                          {alt.meal_name}
+                        </span>
+                        <span className="text-xs text-emerald-600 font-medium whitespace-nowrap ml-2">
+                          {Math.round(alt.score * 100)}% match
+                        </span>
+                      </div>
+                      {alt.meal && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {Math.round(alt.meal.calories)} cal ·{" "}
+                          {Math.round(alt.meal.protein)}g P ·{" "}
+                          {Math.round(alt.meal.carbs)}g C ·{" "}
+                          {Math.round(alt.meal.fat)}g F · ฿{alt.meal.price}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
 
