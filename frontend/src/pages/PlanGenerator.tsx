@@ -45,8 +45,7 @@ export function PlanGeneratorPage() {
   const [showPlanDatasheet, setShowPlanDatasheet] = useState(false);
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
-  const clearCart = useCartStore((s) => s.clearCart);
-  const setPlanContext = useCartStore((s) => s.setPlanContext);
+  const addPlanContext = useCartStore((s) => s.addPlanContext);
   const profile = useProfileStore((s) => s.profile);
 
   // Derive body stats from profile if available
@@ -133,8 +132,6 @@ export function PlanGeneratorPage() {
   };
 
   const handleAddPlanToCart = () => {
-    clearCart();
-
     if (mode === "single" && plan) {
       for (const item of plan.items) {
         addItem(item.meal, {
@@ -152,7 +149,7 @@ export function PlanGeneratorPage() {
         ],
         totalScore: plan.total_score,
       };
-      setPlanContext(ctx);
+      addPlanContext(ctx);
     } else if (multiDayPlan) {
       for (const dayPlan of multiDayPlan.plans) {
         for (const item of dayPlan.items) {
@@ -177,7 +174,7 @@ export function PlanGeneratorPage() {
         })),
         totalScore: avgScore,
       };
-      setPlanContext(ctx);
+      addPlanContext(ctx);
     }
     navigate("/cart");
   };

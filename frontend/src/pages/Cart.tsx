@@ -7,11 +7,11 @@ import type { BodyStats } from "../utils/tdee";
 import { calculateWeightProjection } from "../utils/weightProjection";
 
 export function CartPage() {
-  const { items, updateQuantity, removeItem, total, clearCart, itemPrice, planContext } =
+  const { items, updateQuantity, removeItem, total, clearCart, itemPrice, planContexts } =
     useCartStore();
   const profile = useProfileStore((s) => s.profile);
 
-  // Derive body stats and weight projection from plan context + profile
+  // Derive body stats and weight projection from plan contexts + profile
   const bodyStats: BodyStats | undefined =
     profile?.weight_kg != null &&
     profile?.height_cm != null &&
@@ -27,14 +27,19 @@ export function CartPage() {
         }
       : undefined;
 
+  // Aggregate weight projection across all plans
   const weightProjection =
-    planContext && bodyStats
-      ? calculateWeightProjection(
-          bodyStats,
-          planContext.dailySummaries.reduce((s, d) => s + d.actual_macros.calories, 0) /
-            planContext.dailySummaries.length,
-          planContext.numDays,
-        )
+    planContexts.length > 0 && bodyStats
+      ? (() => {
+          const totalDays = planContexts.reduce((s, c) => s + c.numDays, 0);
+          const totalCalDays = planContexts.reduce(
+            (s, c) =>
+              s + c.dailySummaries.reduce((sd, d) => sd + d.actual_macros.calories, 0),
+            0,
+          );
+          const avgCalories = totalCalDays / totalDays;
+          return calculateWeightProjection(bodyStats, avgCalories, totalDays);
+        })()
       : null;
 
   if (items.length === 0) {
@@ -67,7 +72,7 @@ export function CartPage() {
         </button>
       </div>
 
-      {planContext && <PlanSummaryBadge planContext={planContext} />}
+      {planContexts.length > 0 && <PlanSummaryBadge planContexts={planContexts} />}
 
       {weightProjection && bodyStats && (
         <WeightProjectionCard

@@ -163,7 +163,7 @@ function renderWithRouter(ui: React.ReactElement) {
 describe("PlanGeneratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useCartStore.setState({ items: [], pricingRates: null });
+    useCartStore.setState({ items: [], planContexts: [], pricingRates: null });
   });
 
   it("shows generate button initially", () => {
@@ -251,7 +251,7 @@ describe("PlanGeneratorPage", () => {
 describe("PlanGeneratorPage — Multi-Day", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useCartStore.setState({ items: [], pricingRates: null });
+    useCartStore.setState({ items: [], planContext: null, pricingRates: null });
   });
 
   it("shows day count input when multi-day mode is selected", () => {

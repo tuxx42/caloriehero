@@ -148,7 +148,7 @@ describe("CartPage", () => {
     expect(screen.getByText("+5g P, -10g C")).toBeInTheDocument();
   });
 
-  it("shows plan summary badge when planContext is set", () => {
+  it("shows plan summary badge when planContexts has entries", () => {
     useCartStore.setState({
       items: [
         {
@@ -159,19 +159,21 @@ describe("CartPage", () => {
           extraFat: 0,
         },
       ],
-      planContext: {
-        planType: "multi",
-        numDays: 7,
-        targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
-        dailySummaries: [
-          {
-            day: 1,
-            target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
-            actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
-          },
-        ],
-        totalScore: 0.92,
-      },
+      planContexts: [
+        {
+          planType: "multi",
+          numDays: 7,
+          targetMacros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+          dailySummaries: [
+            {
+              day: 1,
+              target_macros: { calories: 2200, protein: 165, carbs: 220, fat: 73 },
+              actual_macros: { calories: 2150, protein: 160, carbs: 210, fat: 70 },
+            },
+          ],
+          totalScore: 0.92,
+        },
+      ],
     });
     renderWithRouter(<CartPage />);
     expect(screen.getByTestId("plan-summary-badge")).toBeInTheDocument();
@@ -179,7 +181,7 @@ describe("CartPage", () => {
     expect(screen.getByText("92% match")).toBeInTheDocument();
   });
 
-  it("does not show plan badge when planContext is null", () => {
+  it("does not show plan badge when planContexts is empty", () => {
     useCartStore.setState({
       items: [
         {
@@ -190,7 +192,7 @@ describe("CartPage", () => {
           extraFat: 0,
         },
       ],
-      planContext: null,
+      planContexts: [],
     });
     renderWithRouter(<CartPage />);
     expect(screen.queryByTestId("plan-summary-badge")).not.toBeInTheDocument();

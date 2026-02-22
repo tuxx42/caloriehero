@@ -5,7 +5,7 @@ import { useCartStore } from "../stores/cart";
 import { createOrder, payOrder } from "../api/endpoints/orders";
 
 export function CheckoutPage() {
-  const { items, total, clearCart, itemPrice, planContext } = useCartStore();
+  const { items, total, clearCart, itemPrice, planContexts } = useCartStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function CheckoutPage() {
     <div className="max-w-lg mx-auto space-y-6">
       <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
 
-      {planContext && <PlanSummaryBadge planContext={planContext} />}
+      {planContexts.length > 0 && <PlanSummaryBadge planContexts={planContexts} />}
 
       {/* Order summary */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">

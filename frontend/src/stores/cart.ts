@@ -37,10 +37,10 @@ interface PricingRates {
 
 interface CartState {
   items: CartItem[];
-  planContext: PlanContext | null;
+  planContexts: PlanContext[];
   pricingRates: PricingRates | null;
   setPricingRates: (rates: PricingRates) => void;
-  setPlanContext: (ctx: PlanContext) => void;
+  addPlanContext: (ctx: PlanContext) => void;
   addItem: (meal: Meal, extras?: MacroExtras) => void;
   removeItem: (mealId: string) => void;
   updateQuantity: (mealId: string, quantity: number) => void;
@@ -68,10 +68,10 @@ function calcUnitPrice(item: CartItem, rates: PricingRates | null): number {
 
 export const useCartStore = create<CartState>()((set, get) => ({
   items: [],
-  planContext: null,
+  planContexts: [],
   pricingRates: null,
   setPricingRates: (rates) => set({ pricingRates: rates }),
-  setPlanContext: (ctx) => set({ planContext: ctx }),
+  addPlanContext: (ctx) => set((state) => ({ planContexts: [...state.planContexts, ctx] })),
   addItem: (meal, extras) =>
     set((state) => {
       const ep = extras?.extraProtein ?? 0;
@@ -121,7 +121,7 @@ export const useCartStore = create<CartState>()((set, get) => ({
         ),
       };
     }),
-  clearCart: () => set({ items: [], planContext: null }),
+  clearCart: () => set({ items: [], planContexts: [] }),
   itemPrice: (item) => calcUnitPrice(item, get().pricingRates),
   total: () =>
     get().items.reduce(

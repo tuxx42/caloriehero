@@ -32,7 +32,7 @@ describe("useCartStore", () => {
   beforeEach(() => {
     useCartStore.setState({
       items: [],
-      planContext: null,
+      planContexts: [],
       pricingRates: {
         protein_price_per_gram: 3,
         carbs_price_per_gram: 1,
@@ -175,7 +175,7 @@ describe("useCartStore", () => {
     expect(useCartStore.getState().itemPrice(item)).toBe(196.5);
   });
 
-  describe("planContext", () => {
+  describe("planContexts", () => {
     const mockPlanContext: PlanContext = {
       planType: "multi",
       numDays: 7,
@@ -190,25 +190,52 @@ describe("useCartStore", () => {
       totalScore: 0.92,
     };
 
-    it("sets plan context", () => {
-      useCartStore.getState().setPlanContext(mockPlanContext);
-      expect(useCartStore.getState().planContext).toEqual(mockPlanContext);
+    const mockPlanContext2: PlanContext = {
+      planType: "single",
+      numDays: 1,
+      targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+      dailySummaries: [
+        {
+          day: 1,
+          target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+        },
+      ],
+      totalScore: 0.95,
+    };
+
+    it("starts with empty planContexts", () => {
+      expect(useCartStore.getState().planContexts).toEqual([]);
     });
 
-    it("clears plan context on clearCart", () => {
-      useCartStore.getState().setPlanContext(mockPlanContext);
+    it("adds plan context", () => {
+      useCartStore.getState().addPlanContext(mockPlanContext);
+      expect(useCartStore.getState().planContexts).toEqual([mockPlanContext]);
+    });
+
+    it("accumulates multiple plan contexts", () => {
+      useCartStore.getState().addPlanContext(mockPlanContext);
+      useCartStore.getState().addPlanContext(mockPlanContext2);
+      expect(useCartStore.getState().planContexts).toHaveLength(2);
+      expect(useCartStore.getState().planContexts[0]).toEqual(mockPlanContext);
+      expect(useCartStore.getState().planContexts[1]).toEqual(mockPlanContext2);
+    });
+
+    it("clears all plan contexts on clearCart", () => {
+      useCartStore.getState().addPlanContext(mockPlanContext);
+      useCartStore.getState().addPlanContext(mockPlanContext2);
       useCartStore.getState().addItem(mockMeal);
       useCartStore.getState().clearCart();
-      expect(useCartStore.getState().planContext).toBeNull();
+      expect(useCartStore.getState().planContexts).toEqual([]);
       expect(useCartStore.getState().items).toHaveLength(0);
     });
 
-    it("retains plan context when removing an item", () => {
-      useCartStore.getState().setPlanContext(mockPlanContext);
+    it("retains plan contexts when removing an item", () => {
+      useCartStore.getState().addPlanContext(mockPlanContext);
       useCartStore.getState().addItem(mockMeal);
       useCartStore.getState().addItem(mockMeal2);
       useCartStore.getState().removeItem("m1");
-      expect(useCartStore.getState().planContext).toEqual(mockPlanContext);
+      expect(useCartStore.getState().planContexts).toEqual([mockPlanContext]);
       expect(useCartStore.getState().items).toHaveLength(1);
     });
   });
