@@ -42,7 +42,7 @@ export function PlanGeneratorPage() {
     currentMealId: string;
   } | null>(null);
   const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
-  const [showPlanDatasheet, setShowPlanDatasheet] = useState(false);
+  const [viewTab, setViewTab] = useState<"meals" | "nutrition">("meals");
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
   const addPlanContext = useCartStore((s) => s.addPlanContext);
@@ -299,160 +299,190 @@ export function PlanGeneratorPage() {
 
       {activePlan && !loading && (
         <>
-          {/* Score + macros */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
+          {/* Score header */}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex justify-between items-center">
-              <div>
-                <h2 className="font-semibold text-gray-900">
-                  {mode === "multi" ? `Day ${activeDay} Overview` : "Daily Overview"}
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
-                  {Math.round(activePlan.total_score * 100)}% match
-                </span>
-                <button
-                  onClick={() => setShowPlanDatasheet(true)}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full hover:bg-gray-200 transition-colors"
-                >
-                  Details
-                </button>
-              </div>
+              <h2 className="font-semibold text-gray-900">
+                {mode === "multi" ? `Day ${activeDay} Overview` : "Daily Overview"}
+              </h2>
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-full">
+                {Math.round(activePlan.total_score * 100)}% match
+              </span>
             </div>
-            <MacroBar
-              label="Calories"
-              value={activePlan.actual_macros.calories}
-              target={activePlan.target_macros.calories}
-              unit="kcal"
-            />
-            <MacroBar
-              label="Protein"
-              value={activePlan.actual_macros.protein}
-              target={activePlan.target_macros.protein}
-              color="bg-blue-500"
-            />
-            <MacroBar
-              label="Carbs"
-              value={activePlan.actual_macros.carbs}
-              target={activePlan.target_macros.carbs}
-              color="bg-amber-500"
-            />
-            <MacroBar
-              label="Fat"
-              value={activePlan.actual_macros.fat}
-              target={activePlan.target_macros.fat}
-              color="bg-rose-500"
-            />
           </div>
 
-          {/* Slot cards */}
-          <div className="space-y-3">
-            {activePlan.items.map((item) => {
-              const extras = [
-                formatExtra(item.extra_protein, "P"),
-                formatExtra(item.extra_carbs, "C"),
-                formatExtra(item.extra_fat, "F"),
-              ].filter(Boolean);
+          {/* Meals / Nutrition tab bar */}
+          <div className="flex bg-gray-100 rounded-xl p-1">
+            <button
+              onClick={() => setViewTab("meals")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewTab === "meals"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Meals
+            </button>
+            <button
+              onClick={() => setViewTab("nutrition")}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewTab === "nutrition"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Nutrition
+            </button>
+          </div>
 
-              const isRepeated = activeDayRepeatedIds.has(item.meal_id);
+          {viewTab === "meals" && (
+            <>
+              {/* Macro bars */}
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 space-y-3">
+                <MacroBar
+                  label="Calories"
+                  value={activePlan.actual_macros.calories}
+                  target={activePlan.target_macros.calories}
+                  unit="kcal"
+                />
+                <MacroBar
+                  label="Protein"
+                  value={activePlan.actual_macros.protein}
+                  target={activePlan.target_macros.protein}
+                  color="bg-blue-500"
+                />
+                <MacroBar
+                  label="Carbs"
+                  value={activePlan.actual_macros.carbs}
+                  target={activePlan.target_macros.carbs}
+                  color="bg-amber-500"
+                />
+                <MacroBar
+                  label="Fat"
+                  value={activePlan.actual_macros.fat}
+                  target={activePlan.target_macros.fat}
+                  color="bg-rose-500"
+                />
+              </div>
 
-              return (
-                <div
-                  key={item.slot}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">
-                      {SLOT_EMOJI[item.slot] ?? "🍽️"}
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-gray-900 capitalize text-sm">
-                            {item.slot}
-                          </h3>
-                          {isRepeated && (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-medium rounded">
-                              Repeated
-                            </span>
+              {/* Slot cards */}
+              <div className="space-y-3">
+                {activePlan.items.map((item) => {
+                  const extras = [
+                    formatExtra(item.extra_protein, "P"),
+                    formatExtra(item.extra_carbs, "C"),
+                    formatExtra(item.extra_fat, "F"),
+                  ].filter(Boolean);
+
+                  const isRepeated = activeDayRepeatedIds.has(item.meal_id);
+
+                  return (
+                    <div
+                      key={item.slot}
+                      className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-2xl">
+                          {SLOT_EMOJI[item.slot] ?? "🍽️"}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900 capitalize text-sm">
+                                {item.slot}
+                              </h3>
+                              {isRepeated && (
+                                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-medium rounded">
+                                  Repeated
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-emerald-600 font-medium">
+                                {Math.round(item.score * 100)}%
+                              </span>
+                              <button
+                                onClick={() => setDetailItem(item)}
+                                className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                              >
+                                Info
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setSwapSlot({
+                                    slot: item.slot,
+                                    currentMealId: item.meal_id,
+                                  })
+                                }
+                                disabled={swapping}
+                                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                              >
+                                Swap
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            {item.meal_name}
+                          </p>
+                          {extras.length > 0 && (
+                            <p className="text-xs text-indigo-600 mt-0.5">
+                              {extras.join(", ")}
+                            </p>
+                          )}
+                          {item.extra_price > 0 && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Extra: ฿{item.extra_price.toFixed(0)}
+                            </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-emerald-600 font-medium">
-                            {Math.round(item.score * 100)}%
-                          </span>
-                          <button
-                            onClick={() => setDetailItem(item)}
-                            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                          >
-                            Info
-                          </button>
-                          <button
-                            onClick={() =>
-                              setSwapSlot({
-                                slot: item.slot,
-                                currentMealId: item.meal_id,
-                              })
-                            }
-                            disabled={swapping}
-                            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
-                          >
-                            Swap
-                          </button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 text-center text-xs">
+                        <div>
+                          <div className="font-semibold">
+                            {Math.round(item.slot_targets.calories)}
+                          </div>
+                          <div className="text-gray-400">cal</div>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-blue-600">
+                            {Math.round(item.slot_targets.protein)}g
+                          </div>
+                          <div className="text-gray-400">pro</div>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-amber-600">
+                            {Math.round(item.slot_targets.carbs)}g
+                          </div>
+                          <div className="text-gray-400">carb</div>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-rose-600">
+                            {Math.round(item.slot_targets.fat)}g
+                          </div>
+                          <div className="text-gray-400">fat</div>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700">
-                        {item.meal_name}
-                      </p>
-                      {extras.length > 0 && (
-                        <p className="text-xs text-indigo-600 mt-0.5">
-                          {extras.join(", ")}
-                        </p>
-                      )}
-                      {item.extra_price > 0 && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Extra: ฿{item.extra_price.toFixed(0)}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1 text-center text-xs">
-                    <div>
-                      <div className="font-semibold">
-                        {Math.round(item.slot_targets.calories)}
-                      </div>
-                      <div className="text-gray-400">cal</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-blue-600">
-                        {Math.round(item.slot_targets.protein)}g
-                      </div>
-                      <div className="text-gray-400">pro</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-amber-600">
-                        {Math.round(item.slot_targets.carbs)}g
-                      </div>
-                      <div className="text-gray-400">carb</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-rose-600">
-                        {Math.round(item.slot_targets.fat)}g
-                      </div>
-                      <div className="text-gray-400">fat</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {viewTab === "nutrition" && (
+            <PlanDatasheet
+              plan={activePlan}
+              inline
+              bodyStats={bodyStats}
+              numDays={mode === "multi" ? multiDayPlan?.days : 1}
+              dailyCalories={activePlan.actual_macros.calories}
+            />
+          )}
 
           {/* Add Plan to Cart */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-600">
-                {mode === "multi" ? "Total plan price" : "Total plan price"}
-              </span>
+              <span className="text-gray-600">Total plan price</span>
               <span className="text-xl font-bold text-gray-900">
                 ฿{planTotalPrice.toFixed(0)}
               </span>
@@ -484,17 +514,6 @@ export function PlanGeneratorPage() {
           meal={detailItem.meal}
           targetMacros={activePlan.target_macros}
           onClose={() => setDetailItem(null)}
-        />
-      )}
-
-      {/* Plan datasheet modal */}
-      {showPlanDatasheet && activePlan && (
-        <PlanDatasheet
-          plan={activePlan}
-          onClose={() => setShowPlanDatasheet(false)}
-          bodyStats={bodyStats}
-          numDays={mode === "multi" ? multiDayPlan?.days : 1}
-          dailyCalories={activePlan.actual_macros.calories}
         />
       )}
     </div>

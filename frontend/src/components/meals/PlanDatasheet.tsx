@@ -9,10 +9,12 @@ import { generatePlanPdf } from "../../utils/planPdf";
 
 interface PlanDatasheetProps {
   plan: DailyPlan;
-  onClose: () => void;
+  onClose?: () => void;
   bodyStats?: BodyStats;
   numDays?: number;
   dailyCalories?: number;
+  /** Render inline (no modal overlay) when true */
+  inline?: boolean;
 }
 
 const SLOT_EMOJI: Record<string, string> = {
@@ -54,7 +56,7 @@ function formatDelta(delta: number, unit: string): string {
   return `${sign}${Math.round(delta)}${unit}`;
 }
 
-export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories }: PlanDatasheetProps) {
+export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories, inline }: PlanDatasheetProps) {
   const radarRef = useRef<SVGSVGElement>(null);
   const [downloading, setDownloading] = useState(false);
   const { actual_macros: actual, target_macros: target } = plan;
@@ -157,38 +159,17 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
     plan.items.reduce((sum, item) => sum + item.meal.price, 0) +
     plan.total_extra_price;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📊</span>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Daily Plan</h2>
-              <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
-                {Math.round(plan.total_score * 100)}% match
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-          >
-            ✕
-          </button>
-        </div>
+  const content = (
+    <>
+      {/* Radar chart */}
+      <RadarChart
+        ref={radarRef}
+        values={radarValues}
+        targets={radarTargets}
+        labels={radarLabels}
+      />
 
-        {/* Radar chart */}
-        <RadarChart
-          ref={radarRef}
-          values={radarValues}
-          targets={radarTargets}
-          labels={radarLabels}
-        />
-
-        {/* Macro split bar */}
+      {/* Macro split bar */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">
             Macro Split
@@ -468,29 +449,59 @@ export function PlanDatasheet({ plan, onClose, bodyStats, numDays, dailyCalories
           </div>
         )}
 
-        {/* Total price + Close */}
-        <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-500">Total Price</div>
-            <div className="text-xl font-bold text-gray-900">
-              ฿{totalPrice.toFixed(0)}
+      {/* Total price + PDF */}
+      <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
+        <div>
+          <div className="text-xs text-gray-500">Total Price</div>
+          <div className="text-xl font-bold text-gray-900">
+            ฿{totalPrice.toFixed(0)}
+          </div>
+        </div>
+        <button
+          onClick={handleDownloadPdf}
+          disabled={downloading}
+          className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
+        >
+          {downloading ? "Generating..." : "Download PDF"}
+        </button>
+      </div>
+    </>
+  );
+
+  if (inline) {
+    return <div className="space-y-4">{content}</div>;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📊</span>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Daily Plan</h2>
+              <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
+                {Math.round(plan.total_score * 100)}% match
+              </span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-              className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50"
-            >
-              {downloading ? "Generating..." : "Download PDF"}
-            </button>
-            <button
-              onClick={onClose}
-              className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        {content}
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

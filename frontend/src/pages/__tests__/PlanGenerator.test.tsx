@@ -246,12 +246,39 @@ describe("PlanGeneratorPage", () => {
       expect(screen.getByText("฿581")).toBeInTheDocument();
     });
   });
+
+  it("shows Meals/Nutrition tab bar after generation", async () => {
+    vi.mocked(generatePlan).mockResolvedValue(mockPlan);
+    renderWithRouter(<PlanGeneratorPage />);
+
+    fireEvent.click(screen.getByText("Generate Plan"));
+    await waitFor(() => {
+      expect(screen.getByText("Meals")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Nutrition")).toBeInTheDocument();
+  });
+
+  it("switches to inline nutrition datasheet on Nutrition tab", async () => {
+    vi.mocked(generatePlan).mockResolvedValue(mockPlan);
+    renderWithRouter(<PlanGeneratorPage />);
+
+    fireEvent.click(screen.getByText("Generate Plan"));
+    await waitFor(() => {
+      expect(screen.getByText("Pancakes")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Nutrition"));
+    await waitFor(() => {
+      expect(screen.getByText("Macro Split")).toBeInTheDocument();
+    });
+    expect(screen.getByText("% Daily Values")).toBeInTheDocument();
+  });
 });
 
 describe("PlanGeneratorPage — Multi-Day", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useCartStore.setState({ items: [], planContext: null, pricingRates: null });
+    useCartStore.setState({ items: [], planContexts: [], pricingRates: null });
   });
 
   it("shows day count input when multi-day mode is selected", () => {
