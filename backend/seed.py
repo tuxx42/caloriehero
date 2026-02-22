@@ -16,6 +16,7 @@ SEED_MEALS = [
         "calories": 420, "protein": 48, "carbs": 32, "fat": 10, "fiber": 4, "sugar": 2,
         "serving_size": "350g", "price": 180,
         "allergens": [], "dietary_tags": ["high_protein", "gluten_free"],
+        "image_url": "https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=600",
     },
     {
         "name": "Salmon Poke Bowl",
@@ -24,6 +25,7 @@ SEED_MEALS = [
         "calories": 520, "protein": 35, "carbs": 52, "fat": 18, "fiber": 5, "sugar": 6,
         "serving_size": "400g", "price": 250,
         "allergens": ["fish", "soy", "sesame"], "dietary_tags": ["high_protein", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",
     },
     {
         "name": "Greek Yogurt Parfait",
@@ -32,6 +34,7 @@ SEED_MEALS = [
         "calories": 320, "protein": 22, "carbs": 42, "fat": 8, "fiber": 3, "sugar": 18,
         "serving_size": "280g", "price": 120,
         "allergens": ["dairy"], "dietary_tags": ["vegetarian"],
+        "image_url": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600",
     },
     {
         "name": "Turkey & Avocado Wrap",
@@ -40,6 +43,7 @@ SEED_MEALS = [
         "calories": 450, "protein": 32, "carbs": 38, "fat": 18, "fiber": 6, "sugar": 3,
         "serving_size": "320g", "price": 160,
         "allergens": ["wheat", "eggs"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600",
     },
     {
         "name": "Beef Stir-Fry",
@@ -48,6 +52,7 @@ SEED_MEALS = [
         "calories": 580, "protein": 42, "carbs": 55, "fat": 18, "fiber": 4, "sugar": 8,
         "serving_size": "420g", "price": 220,
         "allergens": ["soy"], "dietary_tags": ["high_protein", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600",
     },
     {
         "name": "Veggie Buddha Bowl",
@@ -56,6 +61,7 @@ SEED_MEALS = [
         "calories": 480, "protein": 18, "carbs": 62, "fat": 16, "fiber": 12, "sugar": 8,
         "serving_size": "380g", "price": 170,
         "allergens": ["sesame"], "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600",
     },
     {
         "name": "Egg White Omelette",
@@ -64,6 +70,7 @@ SEED_MEALS = [
         "calories": 280, "protein": 28, "carbs": 22, "fat": 8, "fiber": 3, "sugar": 2,
         "serving_size": "250g", "price": 130,
         "allergens": ["eggs", "dairy", "wheat"], "dietary_tags": ["vegetarian", "high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600",
     },
     {
         "name": "Teriyaki Salmon",
@@ -72,6 +79,7 @@ SEED_MEALS = [
         "calories": 550, "protein": 40, "carbs": 48, "fat": 20, "fiber": 3, "sugar": 10,
         "serving_size": "380g", "price": 280,
         "allergens": ["fish", "soy"], "dietary_tags": ["high_protein", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600",
     },
     {
         "name": "Overnight Oats",
@@ -80,6 +88,7 @@ SEED_MEALS = [
         "calories": 380, "protein": 14, "carbs": 52, "fat": 14, "fiber": 8, "sugar": 16,
         "serving_size": "300g", "price": 110,
         "allergens": ["peanuts"], "dietary_tags": ["vegan", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=600",
     },
     {
         "name": "Chicken Caesar Salad",
@@ -88,6 +97,7 @@ SEED_MEALS = [
         "calories": 380, "protein": 38, "carbs": 18, "fat": 16, "fiber": 3, "sugar": 2,
         "serving_size": "320g", "price": 170,
         "allergens": ["dairy", "eggs", "wheat", "fish"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=600",
     },
     {
         "name": "Shrimp Pad Thai",
@@ -96,6 +106,7 @@ SEED_MEALS = [
         "calories": 520, "protein": 28, "carbs": 62, "fat": 16, "fiber": 3, "sugar": 12,
         "serving_size": "380g", "price": 200,
         "allergens": ["shellfish", "peanuts", "eggs", "soy"], "dietary_tags": ["dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=600",
     },
     {
         "name": "Protein Smoothie Bowl",
@@ -104,6 +115,7 @@ SEED_MEALS = [
         "calories": 350, "protein": 26, "carbs": 48, "fat": 8, "fiber": 6, "sugar": 22,
         "serving_size": "320g", "price": 150,
         "allergens": ["tree_nuts"], "dietary_tags": ["vegetarian", "high_protein", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600",
     },
     {
         "name": "Lamb Kofta Plate",
@@ -112,6 +124,7 @@ SEED_MEALS = [
         "calories": 620, "protein": 38, "carbs": 45, "fat": 28, "fiber": 5, "sugar": 4,
         "serving_size": "420g", "price": 260,
         "allergens": ["dairy", "wheat", "sesame"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=600",
     },
     {
         "name": "Tofu Stir-Fry",
@@ -120,6 +133,7 @@ SEED_MEALS = [
         "calories": 420, "protein": 22, "carbs": 52, "fat": 14, "fiber": 6, "sugar": 10,
         "serving_size": "380g", "price": 160,
         "allergens": ["soy"], "dietary_tags": ["vegan", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1564834744159-ff0ea41ba4b9?w=600",
     },
     {
         "name": "Avocado Toast with Eggs",
@@ -128,6 +142,7 @@ SEED_MEALS = [
         "calories": 380, "protein": 18, "carbs": 32, "fat": 22, "fiber": 7, "sugar": 3,
         "serving_size": "280g", "price": 140,
         "allergens": ["eggs", "wheat"], "dietary_tags": ["vegetarian"],
+        "image_url": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600",
     },
     {
         "name": "Chicken Tikka Masala",
@@ -136,6 +151,7 @@ SEED_MEALS = [
         "calories": 650, "protein": 42, "carbs": 60, "fat": 24, "fiber": 4, "sugar": 8,
         "serving_size": "450g", "price": 230,
         "allergens": ["dairy", "wheat"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600",
     },
     {
         "name": "Mixed Nuts & Fruit",
@@ -144,6 +160,7 @@ SEED_MEALS = [
         "calories": 220, "protein": 6, "carbs": 20, "fat": 14, "fiber": 3, "sugar": 12,
         "serving_size": "60g", "price": 80,
         "allergens": ["tree_nuts"], "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+        "image_url": "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=600",
     },
     {
         "name": "Protein Bar",
@@ -152,6 +169,7 @@ SEED_MEALS = [
         "calories": 250, "protein": 20, "carbs": 28, "fat": 8, "fiber": 3, "sugar": 10,
         "serving_size": "65g", "price": 70,
         "allergens": ["dairy", "peanuts", "wheat"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1622484212850-eb596d769edc?w=600",
     },
     {
         "name": "Grilled Fish Tacos",
@@ -160,6 +178,7 @@ SEED_MEALS = [
         "calories": 440, "protein": 32, "carbs": 42, "fat": 16, "fiber": 5, "sugar": 8,
         "serving_size": "340g", "price": 190,
         "allergens": ["fish", "dairy"], "dietary_tags": ["high_protein"],
+        "image_url": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600",
     },
     {
         "name": "Keto Chicken Thighs",
@@ -168,6 +187,7 @@ SEED_MEALS = [
         "calories": 520, "protein": 42, "carbs": 8, "fat": 36, "fiber": 4, "sugar": 3,
         "serving_size": "380g", "price": 210,
         "allergens": ["dairy"], "dietary_tags": ["keto", "low_carb", "high_protein", "gluten_free"],
+        "image_url": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=600",
     },
 ]
 
