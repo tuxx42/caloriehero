@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { listMeals } from "../api/endpoints/meals";
 import type { Meal } from "../api/types";
 import { MealCard } from "../components/common/MealCard";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
-import { useCartStore } from "../stores/cart";
 import { useAuthStore } from "../stores/auth";
 import { ChartIcon, MealsIcon } from "../components/icons/Icons";
 
 export function HomePage() {
   const [featured, setFeatured] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  const addItem = useCartStore((s) => s.addItem);
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
@@ -79,8 +78,7 @@ export function HomePage() {
               <div key={meal.id} className="animate-slide-up" style={{ animationDelay: `${i * 0.06}s` }}>
                 <MealCard
                   meal={meal}
-                  onAddToCart={addItem}
-                  onSelect={() => {}}
+                  onSelect={() => navigate("/meals")}
                 />
               </div>
             ))}

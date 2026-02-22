@@ -48,7 +48,7 @@ describe("useCartStore", () => {
   });
 
   it("adds an item with default extras", () => {
-    useCartStore.getState().addItem(mockMeal);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(1);
     expect(state.items[0].meal.id).toBe("m1");
@@ -56,13 +56,14 @@ describe("useCartStore", () => {
     expect(state.items[0].extraProtein).toBe(0);
     expect(state.items[0].extraCarbs).toBe(0);
     expect(state.items[0].extraFat).toBe(0);
+    expect(state.items[0].planId).toBe("plan-1");
     expect(state.items[0].id).toBeDefined();
   });
 
   it("adds an item with extras", () => {
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 5, extraFat: 0 });
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 5, extraFat: 0 }, "plan-1");
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(1);
     expect(state.items[0].extraProtein).toBe(10);
@@ -70,19 +71,19 @@ describe("useCartStore", () => {
     expect(state.items[0].extraFat).toBe(0);
   });
 
-  it("increments quantity on duplicate add with same extras", () => {
-    useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().addItem(mockMeal);
+  it("increments quantity on duplicate add within same plan", () => {
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(1);
     expect(state.items[0].quantity).toBe(2);
   });
 
   it("creates separate items for same meal with different extras", () => {
-    useCartStore.getState().addItem(mockMeal);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 });
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 }, "plan-1");
     const state = useCartStore.getState();
     expect(state.items).toHaveLength(2);
   });
@@ -106,29 +107,29 @@ describe("useCartStore", () => {
   });
 
   it("removes an item by item id", () => {
-    useCartStore.getState().addItem(mockMeal);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     const itemId = useCartStore.getState().items[0].id;
     useCartStore.getState().removeItem(itemId);
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
   it("updates quantity by item id", () => {
-    useCartStore.getState().addItem(mockMeal);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     const itemId = useCartStore.getState().items[0].id;
     useCartStore.getState().updateQuantity(itemId, 5);
     expect(useCartStore.getState().items[0].quantity).toBe(5);
   });
 
   it("removes item when quantity set to 0", () => {
-    useCartStore.getState().addItem(mockMeal);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
     const itemId = useCartStore.getState().items[0].id;
     useCartStore.getState().updateQuantity(itemId, 0);
     expect(useCartStore.getState().items).toHaveLength(0);
   });
 
   it("calculates total correctly without extras", () => {
-    useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().addItem(mockMeal2);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal2, undefined, "plan-1");
     const item1Id = useCartStore.getState().items[0].id;
     useCartStore.getState().updateQuantity(item1Id, 2);
     // 159*2 + 200*1 = 518
@@ -138,7 +139,7 @@ describe("useCartStore", () => {
   it("calculates total correctly with extras", () => {
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 });
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 0, extraFat: 0 }, "plan-1");
     // unit_price = 159 + 10*3 = 189, quantity=1
     expect(useCartStore.getState().total()).toBe(189);
   });
@@ -146,15 +147,15 @@ describe("useCartStore", () => {
   it("calculates item price correctly", () => {
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 20, extraFat: 5 });
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: 20, extraFat: 5 }, "plan-1");
     const item = useCartStore.getState().items[0];
     // 159 + (10*3) + (20*1) + (5*1.5) = 159 + 30 + 20 + 7.5 = 216.5
     expect(useCartStore.getState().itemPrice(item)).toBe(216.5);
   });
 
   it("calculates item count correctly", () => {
-    useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().addItem(mockMeal2);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal2, undefined, "plan-1");
     const item1Id = useCartStore.getState().items[0].id;
     useCartStore.getState().updateQuantity(item1Id, 3);
     // 3 + 1 = 4
@@ -162,8 +163,8 @@ describe("useCartStore", () => {
   });
 
   it("clears cart", () => {
-    useCartStore.getState().addItem(mockMeal);
-    useCartStore.getState().addItem(mockMeal2);
+    useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
+    useCartStore.getState().addItem(mockMeal2, undefined, "plan-1");
     useCartStore.getState().clearCart();
     expect(useCartStore.getState().items).toHaveLength(0);
   });
@@ -184,7 +185,7 @@ describe("useCartStore", () => {
   it("calculates unit price with negative extras (no reduction)", () => {
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: -10, extraCarbs: -20, extraFat: -5 });
+      .addItem(mockMeal, { extraProtein: -10, extraCarbs: -20, extraFat: -5 }, "plan-1");
     const item = useCartStore.getState().items[0];
     // Negative extras don't reduce price: 159 + 0 + 0 + 0 = 159
     expect(useCartStore.getState().itemPrice(item)).toBe(159);
@@ -193,7 +194,7 @@ describe("useCartStore", () => {
   it("calculates unit price with mixed positive and negative extras", () => {
     useCartStore
       .getState()
-      .addItem(mockMeal, { extraProtein: 10, extraCarbs: -15, extraFat: 5 });
+      .addItem(mockMeal, { extraProtein: 10, extraCarbs: -15, extraFat: 5 }, "plan-1");
     const item = useCartStore.getState().items[0];
     // 159 + max(0,10)*3 + max(0,-15)*1 + max(0,5)*1.5 = 159 + 30 + 0 + 7.5 = 196.5
     expect(useCartStore.getState().itemPrice(item)).toBe(196.5);
@@ -250,7 +251,7 @@ describe("useCartStore", () => {
     it("clears all plan contexts on clearCart", () => {
       useCartStore.getState().addPlanContext(mockPlanContext);
       useCartStore.getState().addPlanContext(mockPlanContext2);
-      useCartStore.getState().addItem(mockMeal);
+      useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
       useCartStore.getState().clearCart();
       expect(useCartStore.getState().planContexts).toEqual([]);
       expect(useCartStore.getState().items).toHaveLength(0);
@@ -303,30 +304,6 @@ describe("useCartStore", () => {
       expect(useCartStore.getState().planContexts[0].id).toBe("plan-2");
       expect(useCartStore.getState().items).toHaveLength(1);
       expect(useCartStore.getState().items[0].planId).toBe("plan-2");
-    });
-
-    it("does not remove loose items when removing a plan", () => {
-      useCartStore.getState().addItem(mockMeal, undefined, "plan-1");
-      useCartStore.getState().addItem(mockMeal2); // loose item
-      useCartStore.getState().addPlanContext({
-        id: "plan-1",
-        planType: "single",
-        numDays: 1,
-        targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
-        dailySummaries: [{
-          day: 1,
-          target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
-          actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
-        }],
-        totalScore: 0.9,
-      });
-
-      useCartStore.getState().removePlan("plan-1");
-
-      expect(useCartStore.getState().planContexts).toHaveLength(0);
-      expect(useCartStore.getState().items).toHaveLength(1);
-      expect(useCartStore.getState().items[0].meal.id).toBe("m2");
-      expect(useCartStore.getState().items[0].planId).toBeUndefined();
     });
   });
 });

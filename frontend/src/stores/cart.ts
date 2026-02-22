@@ -14,7 +14,7 @@ export interface CartItem {
   extraProtein: number;
   extraCarbs: number;
   extraFat: number;
-  planId?: string;
+  planId: string;
 }
 
 export interface DayMacroSummary {
@@ -44,7 +44,7 @@ interface CartState {
   pricingRates: PricingRates | null;
   setPricingRates: (rates: PricingRates) => void;
   addPlanContext: (ctx: PlanContext) => void;
-  addItem: (meal: Meal, extras?: MacroExtras, planId?: string) => void;
+  addItem: (meal: Meal, extras: MacroExtras | undefined, planId: string) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removePlan: (planId: string) => void;
@@ -82,7 +82,7 @@ export const useCartStore = create<CartState>()((set, get) => ({
       const ec = extras?.extraCarbs ?? 0;
       const ef = extras?.extraFat ?? 0;
 
-      // Only deduplicate within the same plan (or among loose items)
+      // Deduplicate within the same plan
       const existing = state.items.find(
         (i) =>
           i.meal.id === meal.id &&

@@ -36,8 +36,8 @@ export function CheckoutPage() {
     }
   };
 
-  if (items.length === 0) {
-    navigate("/cart");
+  if (items.length === 0 || planContexts.length === 0) {
+    navigate(planContexts.length === 0 ? "/plan" : "/cart");
     return null;
   }
 

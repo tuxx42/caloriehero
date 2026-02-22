@@ -14,7 +14,7 @@ class OrderItemCreate(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    items: list[OrderItemCreate] = Field(min_length=1)
+    items: list[OrderItemCreate] = Field(min_length=3)
     type: str = Field(default="one_time", pattern=r"^(one_time|subscription)$")
     delivery_slot_id: uuid.UUID | None = None
     delivery_address: str | None = None

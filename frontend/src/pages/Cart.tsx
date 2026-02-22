@@ -114,12 +114,12 @@ export function CartPage() {
         <h2 className="font-display text-xl text-stone-900 mb-2">
           Your cart is empty
         </h2>
-        <p className="text-stone-500 mb-6">Add some meals to get started</p>
+        <p className="text-stone-500 mb-6">Generate a meal plan to get started</p>
         <Link
-          to="/meals"
+          to="/plan"
           className="inline-block px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
         >
-          Browse Meals
+          Generate a Plan
         </Link>
       </div>
     );
@@ -130,8 +130,6 @@ export function CartPage() {
     plan: ctx,
     items: items.filter((i) => i.planId === ctx.id),
   }));
-  const looseItems = items.filter((i) => !i.planId);
-
   return (
     <div className="max-w-lg mx-auto space-y-4 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -169,26 +167,6 @@ export function CartPage() {
           ))}
         </div>
       ))}
-
-      {/* Loose items (added individually, not from a plan) */}
-      {looseItems.length > 0 && (
-        <div className="space-y-3">
-          {planGroups.length > 0 && (
-            <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide">
-              Individual items
-            </h2>
-          )}
-          {looseItems.map((item) => (
-            <CartItemRow
-              key={item.id}
-              item={item}
-              onUpdateQuantity={updateQuantity}
-              onRemove={removeItem}
-              unitPrice={itemPrice(item)}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Total + Checkout */}
       <div className="bg-white rounded-2xl p-4 shadow-card border border-stone-100">

@@ -47,10 +47,10 @@ describe("CartPage", () => {
     });
   });
 
-  it("shows empty state when cart has no items", () => {
+  it("shows empty state with link to plan generator", () => {
     renderWithRouter(<CartPage />);
     expect(screen.getByText("Your cart is empty")).toBeInTheDocument();
-    expect(screen.getByText("Browse Meals")).toBeInTheDocument();
+    expect(screen.getByText("Generate a Plan")).toBeInTheDocument();
   });
 
   it("shows cart items when items exist", () => {
@@ -63,6 +63,21 @@ describe("CartPage", () => {
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -81,6 +96,21 @@ describe("CartPage", () => {
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -99,6 +129,21 @@ describe("CartPage", () => {
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -116,6 +161,21 @@ describe("CartPage", () => {
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -133,6 +193,21 @@ describe("CartPage", () => {
           extraProtein: 0,
           extraCarbs: 0,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -150,6 +225,21 @@ describe("CartPage", () => {
           extraProtein: 5,
           extraCarbs: -10,
           extraFat: 0,
+          planId: "plan-1",
+        },
+      ],
+      planContexts: [
+        {
+          id: "plan-1",
+          planType: "single",
+          numDays: 1,
+          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+          dailySummaries: [{
+            day: 1,
+            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
+          }],
+          totalScore: 0.95,
         },
       ],
     });
@@ -191,24 +281,6 @@ describe("CartPage", () => {
     expect(screen.getByTestId("plan-summary-badge")).toBeInTheDocument();
     expect(screen.getByText("7-Day Plan")).toBeInTheDocument();
     expect(screen.getByText("92% match")).toBeInTheDocument();
-  });
-
-  it("does not show plan badge when planContexts is empty", () => {
-    useCartStore.setState({
-      items: [
-        {
-          id: "item-1",
-          meal: mockMeal,
-          quantity: 1,
-          extraProtein: 0,
-          extraCarbs: 0,
-          extraFat: 0,
-        },
-      ],
-      planContexts: [],
-    });
-    renderWithRouter(<CartPage />);
-    expect(screen.queryByTestId("plan-summary-badge")).not.toBeInTheDocument();
   });
 
   it("groups items under their plan", () => {
@@ -265,46 +337,6 @@ describe("CartPage", () => {
     expect(screen.getByText("7-Day Plan")).toBeInTheDocument();
     expect(screen.getByText("Grilled Chicken")).toBeInTheDocument();
     expect(screen.getByText("Salmon Bowl")).toBeInTheDocument();
-  });
-
-  it("shows 'Individual items' heading when both plans and loose items exist", () => {
-    useCartStore.setState({
-      items: [
-        {
-          id: "item-1",
-          meal: mockMeal,
-          quantity: 1,
-          extraProtein: 0,
-          extraCarbs: 0,
-          extraFat: 0,
-          planId: "plan-1",
-        },
-        {
-          id: "item-2",
-          meal: mockMeal2,
-          quantity: 1,
-          extraProtein: 0,
-          extraCarbs: 0,
-          extraFat: 0,
-        },
-      ],
-      planContexts: [
-        {
-          id: "plan-1",
-          planType: "single",
-          numDays: 1,
-          targetMacros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
-          dailySummaries: [{
-            day: 1,
-            target_macros: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
-            actual_macros: { calories: 1950, protein: 145, carbs: 195, fat: 63 },
-          }],
-          totalScore: 0.95,
-        },
-      ],
-    });
-    renderWithRouter(<CartPage />);
-    expect(screen.getByText("Individual items")).toBeInTheDocument();
   });
 
   it("removes a plan and its items when remove button is clicked", () => {

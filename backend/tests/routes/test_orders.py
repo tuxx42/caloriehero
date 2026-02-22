@@ -33,17 +33,30 @@ async def _seed_meal(db: AsyncSession, **overrides: object) -> Meal:
     return meal
 
 
+async def _seed_three_meals(db: AsyncSession) -> list[Meal]:
+    """Seed 3 meals (breakfast + lunch + dinner) to satisfy minimum order size."""
+    m1 = await _seed_meal(db, name="Breakfast", category="breakfast", price=100.0)
+    m2 = await _seed_meal(db, name="Lunch", category="lunch", price=150.0)
+    m3 = await _seed_meal(db, name="Dinner", category="dinner", price=200.0)
+    return [m1, m2, m3]
+
+
+def _three_item_payload(meals: list[Meal]) -> list[dict]:
+    """Build a 3-item order payload from a list of meals."""
+    return [{"meal_id": str(m.id), "quantity": 1} for m in meals]
+
+
 @pytest.mark.asyncio
 class TestCreateOrder:
     async def test_create_order(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{"meal_id": str(meal.id), "quantity": 2}],
+                "items": _three_item_payload(meals),
                 "type": "one_time",
             },
             headers=make_auth_header(user.id),
@@ -51,38 +64,43 @@ class TestCreateOrder:
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "pending_payment"
-        assert data["total"] == 318.0  # 159 * 2
-        assert len(data["items"]) == 1
-        assert data["items"][0]["meal_name"] == "Order Test Meal"
-        assert data["items"][0]["quantity"] == 2
+        # 100 + 150 + 200 = 450
+        assert data["total"] == 450.0
+        assert len(data["items"]) == 3
 
-    async def test_create_order_multiple_items(
+    async def test_create_order_multiple_quantities(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal1 = await _seed_meal(db_session, name="Meal A", price=100.0)
-        meal2 = await _seed_meal(db_session, name="Meal B", price=200.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
                 "items": [
-                    {"meal_id": str(meal1.id), "quantity": 1},
-                    {"meal_id": str(meal2.id), "quantity": 3},
+                    {"meal_id": str(meals[0].id), "quantity": 1},
+                    {"meal_id": str(meals[1].id), "quantity": 2},
+                    {"meal_id": str(meals[2].id), "quantity": 3},
                 ],
             },
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
-        assert resp.json()["total"] == 700.0  # 100 + 200*3
+        # 100*1 + 150*2 + 200*3 = 1000
+        assert resp.json()["total"] == 1000.0
 
     async def test_create_order_invalid_meal(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{"meal_id": str(uuid.uuid4()), "quantity": 1}],
+                "items": [
+                    {"meal_id": str(meals[0].id), "quantity": 1},
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(uuid.uuid4()), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
@@ -92,11 +110,16 @@ class TestCreateOrder:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session, active=False)
+        meals = await _seed_three_meals(db_session)
+        inactive = await _seed_meal(db_session, name="Inactive", active=False)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{"meal_id": str(meal.id), "quantity": 1}],
+                "items": [
+                    {"meal_id": str(meals[0].id), "quantity": 1},
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(inactive.id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
@@ -113,12 +136,31 @@ class TestCreateOrder:
         )
         assert resp.status_code == 422
 
+    async def test_create_order_too_few_items(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Orders with fewer than 3 items should be rejected (plan-only ordering)."""
+        user = await create_test_user(db_session)
+        meal = await _seed_meal(db_session)
+        resp = await client.post(
+            "/api/v1/orders",
+            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            headers=make_auth_header(user.id),
+        )
+        assert resp.status_code == 422
+
     async def test_create_order_requires_auth(
         self, client: AsyncClient
     ) -> None:
         resp = await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(uuid.uuid4()), "quantity": 1}]},
+            json={
+                "items": [
+                    {"meal_id": str(uuid.uuid4()), "quantity": 1},
+                    {"meal_id": str(uuid.uuid4()), "quantity": 1},
+                    {"meal_id": str(uuid.uuid4()), "quantity": 1},
+                ],
+            },
         )
         assert resp.status_code in (401, 403)
 
@@ -144,12 +186,12 @@ class TestListOrders:
         user2 = await create_test_user(
             db_session, google_id="g2", email="u2@test.com"
         )
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
 
         # User1 creates an order
         await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user1.id),
         )
 
@@ -172,10 +214,10 @@ class TestGetOrder:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
         create_resp = await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user.id),
         )
         order_id = create_resp.json()["id"]
@@ -196,10 +238,10 @@ class TestGetOrder:
         user2 = await create_test_user(
             db_session, google_id="g2", email="u2@test.com"
         )
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
         create_resp = await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user1.id),
         )
         order_id = create_resp.json()["id"]
@@ -227,10 +269,10 @@ class TestPayOrder:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
         create_resp = await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user.id),
         )
         order_id = create_resp.json()["id"]
@@ -248,10 +290,10 @@ class TestPayOrder:
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session)
+        meals = await _seed_three_meals(db_session)
         create_resp = await client.post(
             "/api/v1/orders",
-            json={"items": [{"meal_id": str(meal.id), "quantity": 1}]},
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user.id),
         )
         order_id = create_resp.json()["id"]
@@ -304,72 +346,82 @@ class TestOrderWithMacroExtras:
     ) -> None:
         user = await create_test_user(db_session)
         await self._seed_settings(db_session)
-        meal = await _seed_meal(db_session, price=200.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{
-                    "meal_id": str(meal.id),
-                    "quantity": 1,
-                    "extra_protein": 10,
-                    "extra_carbs": 0,
-                    "extra_fat": 0,
-                }],
+                "items": [
+                    {
+                        "meal_id": str(meals[0].id),
+                        "quantity": 1,
+                        "extra_protein": 10,
+                        "extra_carbs": 0,
+                        "extra_fat": 0,
+                    },
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(meals[2].id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
         data = resp.json()
-        # 200 + 10 * 3.0 = 230
-        assert data["total"] == 230.0
-        assert data["items"][0]["extra_protein"] == 10
-        assert data["items"][0]["extra_carbs"] == 0
-        assert data["items"][0]["extra_fat"] == 0
+        # meals[0]: 100 + 10*3 = 130, meals[1]: 150, meals[2]: 200 → 480
+        assert data["total"] == 480.0
+        # Find the item with extra protein
+        extra_item = next(i for i in data["items"] if i["extra_protein"] == 10)
+        assert extra_item["extra_carbs"] == 0
+        assert extra_item["extra_fat"] == 0
 
     async def test_order_with_all_extras(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
         await self._seed_settings(db_session)
-        meal = await _seed_meal(db_session, price=200.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{
-                    "meal_id": str(meal.id),
-                    "quantity": 2,
-                    "extra_protein": 10,
-                    "extra_carbs": 20,
-                    "extra_fat": 5,
-                }],
+                "items": [
+                    {
+                        "meal_id": str(meals[0].id),
+                        "quantity": 2,
+                        "extra_protein": 10,
+                        "extra_carbs": 20,
+                        "extra_fat": 5,
+                    },
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(meals[2].id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
         data = resp.json()
-        # unit_price = 200 + (10*3) + (20*1) + (5*1.5) = 257.5
-        # total = 257.5 * 2 = 515.0
-        assert data["total"] == 515.0
-        assert data["items"][0]["unit_price"] == 257.5
+        # meals[0]: (100 + 10*3 + 20*1 + 5*1.5) * 2 = 157.5 * 2 = 315
+        # meals[1]: 150, meals[2]: 200 → 665
+        assert data["total"] == 665.0
+        extra_item = next(i for i in data["items"] if i["extra_protein"] == 10)
+        assert extra_item["unit_price"] == 157.5
 
     async def test_order_defaults_extras_to_zero(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
         user = await create_test_user(db_session)
-        meal = await _seed_meal(db_session, price=159.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
-            json={
-                "items": [{"meal_id": str(meal.id), "quantity": 1}],
-            },
+            json={"items": _three_item_payload(meals)},
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
         data = resp.json()
-        assert data["items"][0]["extra_protein"] == 0
-        assert data["items"][0]["extra_carbs"] == 0
-        assert data["items"][0]["extra_fat"] == 0
-        assert data["total"] == 159.0
+        for item in data["items"]:
+            assert item["extra_protein"] == 0
+            assert item["extra_carbs"] == 0
+            assert item["extra_fat"] == 0
+        # 100 + 150 + 200 = 450
+        assert data["total"] == 450.0
 
     async def test_order_with_negative_extras_no_price_reduction(
         self, client: AsyncClient, db_session: AsyncSession
@@ -377,27 +429,31 @@ class TestOrderWithMacroExtras:
         """Negative extras don't reduce the price."""
         user = await create_test_user(db_session)
         await self._seed_settings(db_session)
-        meal = await _seed_meal(db_session, price=200.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{
-                    "meal_id": str(meal.id),
-                    "quantity": 1,
-                    "extra_protein": -10,
-                    "extra_carbs": -20,
-                    "extra_fat": -5,
-                }],
+                "items": [
+                    {
+                        "meal_id": str(meals[0].id),
+                        "quantity": 1,
+                        "extra_protein": -10,
+                        "extra_carbs": -20,
+                        "extra_fat": -5,
+                    },
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(meals[2].id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
         data = resp.json()
-        # Price should stay at base (negative extras are free)
-        assert data["total"] == 200.0
-        assert data["items"][0]["extra_protein"] == -10
-        assert data["items"][0]["extra_carbs"] == -20
-        assert data["items"][0]["extra_fat"] == -5
+        # Price should stay at base: 100 + 150 + 200 = 450
+        assert data["total"] == 450.0
+        neg_item = next(i for i in data["items"] if i["extra_protein"] == -10)
+        assert neg_item["extra_carbs"] == -20
+        assert neg_item["extra_fat"] == -5
 
     async def test_order_rejects_excessive_negative_protein(
         self, client: AsyncClient, db_session: AsyncSession
@@ -406,15 +462,20 @@ class TestOrderWithMacroExtras:
         user = await create_test_user(db_session)
         await self._seed_settings(db_session)
         # Meal has 40g protein
-        meal = await _seed_meal(db_session, price=200.0, protein=40.0)
+        meals = await _seed_three_meals(db_session)
+        bad_meal = await _seed_meal(db_session, name="High Protein", price=200.0, protein=40.0)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{
-                    "meal_id": str(meal.id),
-                    "quantity": 1,
-                    "extra_protein": -50,
-                }],
+                "items": [
+                    {
+                        "meal_id": str(bad_meal.id),
+                        "quantity": 1,
+                        "extra_protein": -50,
+                    },
+                    {"meal_id": str(meals[0].id), "quantity": 1},
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
@@ -426,21 +487,26 @@ class TestOrderWithMacroExtras:
         """Mixed positive and negative extras: only positive adds cost."""
         user = await create_test_user(db_session)
         await self._seed_settings(db_session)
-        meal = await _seed_meal(db_session, price=200.0)
+        meals = await _seed_three_meals(db_session)
         resp = await client.post(
             "/api/v1/orders",
             json={
-                "items": [{
-                    "meal_id": str(meal.id),
-                    "quantity": 1,
-                    "extra_protein": 10,
-                    "extra_carbs": -15,
-                    "extra_fat": 0,
-                }],
+                "items": [
+                    {
+                        "meal_id": str(meals[0].id),
+                        "quantity": 1,
+                        "extra_protein": 10,
+                        "extra_carbs": -15,
+                        "extra_fat": 0,
+                    },
+                    {"meal_id": str(meals[1].id), "quantity": 1},
+                    {"meal_id": str(meals[2].id), "quantity": 1},
+                ],
             },
             headers=make_auth_header(user.id),
         )
         assert resp.status_code == 201
         data = resp.json()
-        # 200 + max(0,10)*3 + max(0,-15)*1 + max(0,0)*1.5 = 200 + 30 = 230
-        assert data["total"] == 230.0
+        # meals[0]: 100 + max(0,10)*3 + max(0,-15)*1 + max(0,0)*1.5 = 130
+        # meals[1]: 150, meals[2]: 200 → 480
+        assert data["total"] == 480.0
